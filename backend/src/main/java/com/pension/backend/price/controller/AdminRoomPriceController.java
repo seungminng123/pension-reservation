@@ -5,6 +5,7 @@ import com.pension.backend.price.service.RoomDailyPriceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/rooms/{roomId}/prices")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "관리자 객실 요금", description = "관리자 객실 날짜별 요금 관리 API")
 public class AdminRoomPriceController {
 
     private final RoomDailyPriceService roomDailyPriceService;
