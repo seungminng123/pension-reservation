@@ -1,39 +1,49 @@
 package com.pension.backend.room.dto;
 
+import com.pension.backend.price.dto.RoomDailyPriceResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Getter
-@Schema(description = "객실 예약 불가 날짜 조회 응답")
+@AllArgsConstructor
+@Schema(description = "객실 월별 예약 가능 정보")
 public class RoomAvailabilityResponse {
 
-    @Schema(description = "객실 ID", example = "1")
-    private final Long roomId;
-
-    @Schema(description = "조회 연도", example = "2026")
-    private final Integer year;
-
-    @Schema(description = "조회 월", example = "10")
-    private final Integer month;
+    @Schema(
+            description = "객실 ID",
+            example = "1"
+    )
+    private Long roomId;
 
     @Schema(
-            description = "예약 불가 날짜 목록",
-            example = "[\"2026-10-03\", \"2026-10-04\"]"
+            description = "조회 연도",
+            example = "2026"
     )
-    private final List<LocalDate> unavailableDates;
+    private int year;
 
-    public RoomAvailabilityResponse(
-            Long roomId,
-            Integer year,
-            Integer month,
-            List<LocalDate> unavailableDates
-    ) {
-        this.roomId = roomId;
-        this.year = year;
-        this.month = month;
-        this.unavailableDates = unavailableDates;
-    }
+    @Schema(
+            description = "조회 월",
+            example = "10"
+    )
+    private int month;
+
+    @Schema(
+            description = "예약이 불가능한 날짜 목록",
+            example = """
+                    [
+                      "2026-10-12",
+                      "2026-10-13"
+                    ]
+                    """
+    )
+    private List<LocalDate> unavailableDates;
+
+    @Schema(
+            description = "해당 월의 날짜별 실제 판매 가격"
+    )
+    private List<RoomDailyPriceResponse> dailyPrices;
 }

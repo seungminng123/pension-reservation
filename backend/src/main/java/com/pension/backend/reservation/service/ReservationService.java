@@ -1,6 +1,11 @@
 package com.pension.backend.reservation.service;
 
-import com.pension.backend.reservation.dto.*;
+import com.pension.backend.price.service.RoomDailyPriceService;
+import com.pension.backend.reservation.dto.AdminReservationDetailResponse;
+import com.pension.backend.reservation.dto.AdminReservationListResponse;
+import com.pension.backend.reservation.dto.ReservationCreateRequest;
+import com.pension.backend.reservation.dto.ReservationResponse;
+import com.pension.backend.reservation.dto.ReservationStatusResponse;
 import com.pension.backend.reservation.entity.Reservation;
 import com.pension.backend.reservation.entity.ReservationStatus;
 import com.pension.backend.reservation.repository.ReservationRepository;
@@ -8,238 +13,328 @@ import com.pension.backend.room.entity.Room;
 import com.pension.backend.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final RoomRepository roomRepository;
+    private final RoomDailyPriceService roomDailyPriceService;
 
     @Value("${reservation.deposit-amount}")
     private Long depositAmount;
 
+    // 예약 생성
     @Transactional
     public ReservationResponse createReservation(
             ReservationCreateRequest request
     ) {
-        validateDates(request.getCheckIn(), request.getCheckOut());
 
-        Room room = roomRepository.findByIdForUpdate(request.getRoomId())
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "객실을 찾을 수 없습니다."
-                        )
-                );
-
-        if (request.getGuestCount() > room.getMaxGuests()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "최대 수용 인원을 초과했습니다."
-            );
-        }
-
-        boolean overlap =
-                reservationRepository.existsOverlappingReservation(
-                        room.getRoomId(),
-                        request.getCheckIn(),
-                        request.getCheckOut(),
-                        ReservationStatus.CANCELED
-                );
-
-        if (overlap) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "이미 예약된 기간입니다."
-            );
-        }
-
-        long nights = ChronoUnit.DAYS.between(
+        validateDate(
                 request.getCheckIn(),
                 request.getCheckOut()
         );
 
-        long totalPrice = room.getPrice() * nights;
-
-        Reservation reservation = new Reservation(
-                generateReservationNumber(),
-                room,
-                request.getGuestName(),
-                request.getPhoneNumber(),
-                request.getDepositorName(),
-                request.getGuestCount(),
-                request.getCheckIn(),
-                request.getCheckOut(),
-                totalPrice,
-                depositAmount
-        );
-
-        return new ReservationResponse(
-                reservationRepository.save(reservation)
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public ReservationResponse lookupReservation(
-            ReservationLookupRequest request
-    ) {
-        Reservation reservation =
-                reservationRepository
-                        .findByReservationNumberAndPhoneNumber(
-                                request.getReservationNumber(),
-                                request.getPhoneNumber()
+        // 객실 조회 및 동시 예약 방지
+        Room room =
+                roomRepository
+                        .findByIdForUpdate(
+                                request.getRoomId()
                         )
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "예약 정보를 찾을 수 없습니다."
-                                )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "객실을 찾을 수 없습니다."
+                                        )
                         );
 
-        return new ReservationResponse(reservation);
+        // 예약 인원 확인
+        if (
+                request.getGuestCount() == null ||
+                        request.getGuestCount() < 1
+        ) {
+            throw new IllegalArgumentException(
+                    "예약 인원은 1명 이상이어야 합니다."
+            );
+        }
+
+        if (
+                request.getGuestCount()
+                        > room.getMaxGuests()
+        ) {
+            throw new IllegalArgumentException(
+                    "최대 예약 가능 인원을 초과했습니다."
+            );
+        }
+
+        // 예약 중복 확인
+        boolean hasOverlap =
+                reservationRepository
+                        .existsOverlappingReservation(
+                                room.getRoomId(),
+                                request.getCheckIn(),
+                                request.getCheckOut(),
+                                ReservationStatus.CANCELED
+                        );
+
+        if (hasOverlap) {
+            throw new IllegalStateException(
+                    "이미 예약된 날짜가 포함되어 있습니다."
+            );
+        }
+
+        // 날짜별 가격으로 총 금액 계산
+        long totalPrice =
+                roomDailyPriceService
+                        .calculateTotalPrice(
+                                room,
+                                request.getCheckIn(),
+                                request.getCheckOut()
+                        );
+
+        String reservationNumber =
+                generateReservationNumber();
+
+        Reservation reservation =
+                new Reservation(
+                        reservationNumber,
+                        room,
+                        request.getGuestName(),
+                        request.getPhoneNumber(),
+                        request.getDepositorName(),
+                        request.getGuestCount(),
+                        request.getCheckIn(),
+                        request.getCheckOut(),
+                        totalPrice,
+                        depositAmount
+                );
+
+        Reservation savedReservation =
+                reservationRepository.save(
+                        reservation
+                );
+
+        return new ReservationResponse(
+                savedReservation
+        );
     }
 
-    @Transactional
-    public ReservationStatusResponse requestCancel(
+    // 예약 조회
+    public ReservationResponse lookupReservation(
             String reservationNumber,
-            ReservationCancelRequest request
+            String phoneNumber
     ) {
+
         Reservation reservation =
                 reservationRepository
                         .findByReservationNumberAndPhoneNumber(
                                 reservationNumber,
-                                request.getPhoneNumber()
+                                phoneNumber
                         )
-                        .orElseThrow(() ->
-                                new ResponseStatusException(
-                                        HttpStatus.NOT_FOUND,
-                                        "예약 정보를 찾을 수 없습니다."
-                                )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "예약 정보를 찾을 수 없습니다."
+                                        )
                         );
 
-        try {
-            reservation.requestCancel();
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    e.getMessage()
-            );
-        }
-
-        return new ReservationStatusResponse(reservation);
-    }
-
-    @Transactional(readOnly = true)
-    public List<AdminReservationListResponse> getAdminReservations(
-            ReservationStatus status
-    ) {
-        List<Reservation> reservations;
-
-        if (status == null) {
-            reservations = reservationRepository.findAll(
-                    Sort.by(Sort.Direction.DESC, "createdAt")
-            );
-        } else {
-            reservations =
-                    reservationRepository
-                            .findAllByStatusOrderByCreatedAtDesc(status);
-        }
-
-        return reservations.stream()
-                .map(AdminReservationListResponse::new)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public AdminReservationDetailResponse getAdminReservation(
-            Long reservationId
-    ) {
-        return new AdminReservationDetailResponse(
-                findReservation(reservationId)
+        return new ReservationResponse(
+                reservation
         );
     }
 
+    // 예약 취소 요청
+    @Transactional
+    public ReservationStatusResponse requestCancel(
+            String reservationNumber,
+            String phoneNumber
+    ) {
+
+        Reservation reservation =
+                reservationRepository
+                        .findByReservationNumberAndPhoneNumber(
+                                reservationNumber,
+                                phoneNumber
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "예약 정보를 찾을 수 없습니다."
+                                        )
+                        );
+
+        reservation.requestCancel();
+
+        return new ReservationStatusResponse(
+                reservation
+        );
+    }
+
+    // 관리자 예약 목록 조회
+    public List<AdminReservationListResponse> getAdminReservations(
+            ReservationStatus status
+    ) {
+
+        List<Reservation> reservations;
+
+        if (status == null) {
+
+            reservations =
+                    reservationRepository.findAll();
+
+        } else {
+
+            reservations =
+                    reservationRepository
+                            .findAllByStatusOrderByCreatedAtDesc(
+                                    status
+                            );
+        }
+
+        return reservations
+                .stream()
+                .sorted(
+                        (a, b) ->
+                                b.getCreatedAt()
+                                        .compareTo(
+                                                a.getCreatedAt()
+                                        )
+                )
+                .map(
+                        AdminReservationListResponse::new
+                )
+                .toList();
+    }
+
+    // 관리자 예약 상세 조회
+    public AdminReservationDetailResponse getAdminReservation(
+            Long reservationId
+    ) {
+
+        Reservation reservation =
+                findReservation(
+                        reservationId
+                );
+
+        return new AdminReservationDetailResponse(
+                reservation
+        );
+    }
+
+    // 관리자 예약 확정
     @Transactional
     public ReservationStatusResponse confirmReservation(
             Long reservationId
     ) {
-        Reservation reservation = findReservation(reservationId);
 
-        try {
-            reservation.confirm();
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    e.getMessage()
-            );
-        }
+        Reservation reservation =
+                findReservation(
+                        reservationId
+                );
 
-        return new ReservationStatusResponse(reservation);
+        reservation.confirm();
+
+        return new ReservationStatusResponse(
+                reservation
+        );
     }
 
+    // 관리자 예약 취소
     @Transactional
     public ReservationStatusResponse cancelReservation(
             Long reservationId
     ) {
-        Reservation reservation = findReservation(reservationId);
+
+        Reservation reservation =
+                findReservation(
+                        reservationId
+                );
 
         reservation.cancel();
 
-        return new ReservationStatusResponse(reservation);
+        return new ReservationStatusResponse(
+                reservation
+        );
     }
 
-    private Reservation findReservation(Long reservationId) {
-        return reservationRepository.findById(reservationId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "예약을 찾을 수 없습니다."
-                        )
+    // 예약 단건 조회
+    private Reservation findReservation(
+            Long reservationId
+    ) {
+
+        return reservationRepository
+                .findById(reservationId)
+                .orElseThrow(
+                        () ->
+                                new IllegalArgumentException(
+                                        "예약 정보를 찾을 수 없습니다."
+                                )
                 );
     }
 
-    private void validateDates(
+    // 예약 날짜 검증
+    private void validateDate(
             LocalDate checkIn,
             LocalDate checkOut
     ) {
-        if (!checkIn.isBefore(checkOut)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "체크아웃 날짜는 체크인보다 이후여야 합니다."
+
+        if (
+                checkIn == null ||
+                        checkOut == null
+        ) {
+            throw new IllegalArgumentException(
+                    "체크인과 체크아웃 날짜를 입력해 주세요."
             );
         }
 
-        if (checkIn.isBefore(LocalDate.now())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "과거 날짜는 예약할 수 없습니다."
+        if (!checkOut.isAfter(checkIn)) {
+            throw new IllegalArgumentException(
+                    "체크아웃 날짜는 체크인 날짜보다 이후여야 합니다."
+            );
+        }
+
+        if (
+                checkIn.isBefore(
+                        LocalDate.now()
+                )
+        ) {
+            throw new IllegalArgumentException(
+                    "지난 날짜에는 예약할 수 없습니다."
             );
         }
     }
 
+    // 예약번호 생성
     private String generateReservationNumber() {
-        String time = LocalDateTime.now().format(
-                DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-        );
 
-        String random = UUID.randomUUID()
-                .toString()
-                .substring(0, 6)
-                .toUpperCase();
+        String timestamp =
+                LocalDateTime
+                        .now()
+                        .format(
+                                DateTimeFormatter.ofPattern(
+                                        "yyyyMMddHHmmss"
+                                )
+                        );
 
-        return "R" + time + random;
+        String random =
+                UUID.randomUUID()
+                        .toString()
+                        .replace("-", "")
+                        .substring(0, 6)
+                        .toUpperCase();
+
+        return "R"
+                + timestamp
+                + random;
     }
 }
