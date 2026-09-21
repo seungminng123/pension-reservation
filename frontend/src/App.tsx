@@ -1,24 +1,39 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-function HomePage() {
-  return <div>펜션 예약 서비스</div>;
-}
+import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 
-function AdminLoginPage() {
-  return <div>관리자 로그인</div>;
-}
+import AdminLayout from "@/pages/admin/AdminLayout";
+import AdminLoginPage from "@/pages/admin/AdminLoginPage";
+import AdminReservationsPage from "@/pages/admin/AdminReservationsPage";
+import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
 
-function AdminPage() {
-  return <div>관리자 페이지</div>;
-}
+import HomePage from "@/pages/HomePage";
+import ReservationLookupPage from "@/pages/ReservationLookupPage";
+import RoomDetailPage from "@/pages/RoomDetailPage";
 
 export default function App() {
   return (
     <Routes>
+      {/* 사용자 */}
       <Route path="/" element={<HomePage />} />
 
+      <Route path="/rooms/:roomId" element={<RoomDetailPage />} />
+
+      <Route path="/reservation/lookup" element={<ReservationLookupPage />} />
+
+      {/* 관리자 로그인 */}
       <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/admin" element={<AdminPage />} />
+
+      {/* 관리자 인증 필요 */}
+      <Route element={<AdminProtectedRoute />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="reservations" replace />} />
+
+          <Route path="reservations" element={<AdminReservationsPage />} />
+
+          <Route path="rooms" element={<AdminRoomsPage />} />
+        </Route>
+      </Route>
     </Routes>
   );
 }
