@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import {
   cancelAdminReservation,
@@ -129,7 +130,6 @@ export default function AdminReservationsPage() {
         updatedReservation,
       );
 
-      // 저장 후 서버에서 받은 메모 사용
       setAdminMemo(null);
     },
   });
@@ -189,12 +189,21 @@ export default function AdminReservationsPage() {
   return (
     <div>
       {/* 헤더 */}
-      <div>
-        <h2 className="text-2xl font-bold">예약 관리</h2>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">예약 관리</h2>
 
-        <p className="mt-2 text-sm text-gray-500">
-          예약 현황을 확인하고 예약을 확정하거나 취소할 수 있습니다.
-        </p>
+          <p className="mt-2 text-sm text-gray-500">
+            예약 현황을 확인하고 예약을 확정하거나 취소할 수 있습니다.
+          </p>
+        </div>
+
+        <Link
+          to="/?from=admin"
+          className="shrink-0 rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+        >
+          예약 추가
+        </Link>
       </div>
 
       {/* 탭 */}
@@ -489,7 +498,6 @@ export default function AdminReservationsPage() {
                 onClick={() =>
                   memoMutation.mutate({
                     reservationId: selectedReservation.reservationId,
-
                     memo: memoValue,
                   })
                 }
@@ -570,7 +578,6 @@ export default function AdminReservationsPage() {
 
                     confirmMutation.mutate({
                       reservationId: selectedReservation.reservationId,
-
                       paymentMethod,
                     });
                   }}

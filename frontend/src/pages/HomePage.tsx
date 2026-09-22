@@ -1,6 +1,6 @@
 ﻿import { CalendarDays } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import AvailableRoomList from "@/components/reservation/AvailableRoomList";
 import ReservationDateCalendar from "@/components/reservation/ReservationDateCalendar";
@@ -8,6 +8,10 @@ import ReservationDateCalendar from "@/components/reservation/ReservationDateCal
 import type { RoomType } from "@/types/room";
 
 export default function HomePage() {
+  const [searchParams] = useSearchParams();
+
+  const fromAdmin = searchParams.get("from") === "admin";
+
   const [selectedType, setSelectedType] = useState<RoomType>("ROOM");
 
   const [dates, setDates] = useState({
@@ -39,13 +43,25 @@ export default function HomePage() {
           </p>
         </div>
 
-        <Link
-          to="/reservation/lookup"
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm"
-        >
-          <CalendarDays size={20} />
-          예약 조회
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 관리자에서 들어온 경우에만 표시 */}
+          {fromAdmin && (
+            <Link
+              to="/admin/reservations"
+              className="inline-flex min-h-11 items-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+            >
+              ← 관리자 예약 관리로 돌아가기
+            </Link>
+          )}
+
+          <Link
+            to="/reservation/lookup"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm"
+          >
+            <CalendarDays size={20} />
+            예약 조회
+          </Link>
+        </div>
       </div>
 
       {/* 예약 종류 */}
