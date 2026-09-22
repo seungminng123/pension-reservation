@@ -5,9 +5,27 @@ import { Link } from "react-router-dom";
 
 import { lookupReservation, requestReservationCancel } from "@/api/reservation";
 
+const reservationStatusMap = {
+  PENDING: {
+    label: "예약 대기",
+    className: "bg-amber-50 text-amber-600",
+  },
+  CONFIRMED: {
+    label: "예약 확정",
+    className: "bg-green-50 text-green-600",
+  },
+  CANCEL_REQUESTED: {
+    label: "취소 요청",
+    className: "bg-orange-50 text-orange-600",
+  },
+  CANCELED: {
+    label: "예약 취소",
+    className: "bg-gray-100 text-gray-500",
+  },
+} as const;
+
 export default function ReservationLookupPage() {
   const [reservationNumber, setReservationNumber] = useState("");
-
   const [phoneNumber, setPhoneNumber] = useState("");
 
   const lookupMutation = useMutation({
@@ -39,13 +57,19 @@ export default function ReservationLookupPage() {
 
   const reservation = lookupMutation.data;
 
+  const statusInfo = reservation
+    ? reservationStatusMap[
+        reservation.status as keyof typeof reservationStatusMap
+      ]
+    : null;
+
   return (
     <main className="mx-auto max-w-xl px-4 py-8 sm:px-5 sm:py-12">
       <Link
         to="/"
         className="inline-flex min-h-11 items-center gap-2 text-sm text-gray-500"
       >
-        <ArrowLeft size={20} strokeWidth={2} aria-hidden="true" /> 홈
+        <ArrowLeft size={20} strokeWidth={2} aria-hidden="true" />홈
       </Link>
 
       <h1 className="mt-6 text-3xl font-bold">예약 조회</h1>
@@ -86,7 +110,17 @@ export default function ReservationLookupPage() {
 
       {reservation && (
         <section className="mt-8 rounded-2xl border p-4 sm:p-6">
-          <h2 className="text-xl font-bold">예약 정보</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-bold">예약 정보</h2>
+
+            {statusInfo && (
+              <span
+                className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${statusInfo.className}`}
+              >
+                {statusInfo.label}
+              </span>
+            )}
+          </div>
 
           <div className="mt-5 space-y-3">
             <p>예약번호: {reservation.reservationNumber}</p>
@@ -104,8 +138,6 @@ export default function ReservationLookupPage() {
             <p>결제 예정 금액: {reservation.totalPrice.toLocaleString()}원</p>
 
             <p>예약금: {reservation.depositAmount.toLocaleString()}원</p>
-
-            <p>상태: {reservation.status}</p>
           </div>
 
           {(reservation.status === "PENDING" ||
@@ -113,20 +145,23 @@ export default function ReservationLookupPage() {
             <button
               type="button"
               onClick={() => cancelMutation.mutate()}
-              className="mt-6 w-full rounded-xl border border-red-500 p-3 text-red-500"
+              disabled={cancelMutation.isPending}
+              className="mt-6 w-full rounded-xl border border-red-500 p-3 text-red-500 disabled:opacity-50"
             >
-              예약 취소 요청
+              {cancelMutation.isPending ? "취소 요청 중..." : "예약 취소 요청"}
             </button>
           )}
 
           {reservation.status === "CANCEL_REQUESTED" && (
-            <p className="mt-5 text-center text-orange-500">
+            <p className="mt-5 text-center text-sm text-orange-500">
               취소 요청이 접수되었습니다.
             </p>
           )}
 
           {reservation.status === "CANCELED" && (
-            <p className="mt-5 text-center text-gray-500">취소된 예약입니다.</p>
+            <p className="mt-5 text-center text-sm text-gray-500">
+              취소된 예약입니다.
+            </p>
           )}
         </section>
       )}
