@@ -30,7 +30,7 @@ export default function AdminLayout() {
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <div>
-            <h1 className="text-xl font-bold">펜션 관리자</h1>
+            <h1 className="text-xl font-bold">관리자 페이지</h1>
 
             <p className="mt-1 text-sm text-gray-500">예약 및 객실 관리</p>
           </div>
