@@ -1,4 +1,5 @@
-import { LogOut, CalendarDays, BedDouble, WalletCards } from "lucide-react";
+import { BedDouble, CalendarDays, LogOut, WalletCards } from "lucide-react";
+import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAdminAuthStore } from "@/stores/adminAuth";
@@ -7,6 +8,14 @@ export default function AdminLayout() {
   const navigate = useNavigate();
 
   const logout = useAdminAuthStore((state) => state.logout);
+
+  useEffect(() => {
+    document.title = "펜션 관리자";
+
+    return () => {
+      document.title = "펜션 예약";
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -31,7 +40,8 @@ export default function AdminLayout() {
             onClick={handleLogout}
             className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm"
           >
-            <LogOut size={20} strokeWidth={2} aria-hidden="true" /> 로그아웃
+            <LogOut size={20} strokeWidth={2} aria-hidden="true" />
+            로그아웃
           </button>
         </div>
       </header>
@@ -52,8 +62,8 @@ export default function AdminLayout() {
                 }`
               }
             >
-              <CalendarDays size={20} strokeWidth={2} aria-hidden="true" /> 예약
-              관리
+              <CalendarDays size={20} strokeWidth={2} aria-hidden="true" />
+              예약 관리
             </NavLink>
 
             <NavLink
@@ -66,19 +76,22 @@ export default function AdminLayout() {
                 }`
               }
             >
-              <BedDouble size={20} strokeWidth={2} aria-hidden="true" /> 객실
-              관리
+              <BedDouble size={20} strokeWidth={2} aria-hidden="true" />
+              객실 관리
             </NavLink>
+
             <NavLink
               to="/admin/settlements"
               className={({ isActive }) =>
-                "flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-3 text-sm sm:px-4 sm:text-base md:justify-start " +
-                (isActive
-                  ? "bg-black font-medium text-white"
-                  : "text-gray-600 hover:bg-gray-100")
+                `flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-3 text-sm sm:px-4 sm:text-base md:justify-start ${
+                  isActive
+                    ? "bg-black font-medium text-white"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`
               }
             >
-              <WalletCards size={20} aria-hidden="true" /> 정산
+              <WalletCards size={20} strokeWidth={2} aria-hidden="true" />
+              정산
             </NavLink>
           </nav>
         </aside>
