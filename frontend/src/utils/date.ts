@@ -13,3 +13,10 @@ export const monthDates = (month: Date) =>
     (_, index) =>
       formatDate(new Date(month.getFullYear(), month.getMonth(), index + 1)),
   );
+export const addDays = (value: string, days: number) => {
+  const date = new Date(`${value}T00:00:00`);
+
+  date.setDate(date.getDate() + days);
+
+  return formatDate(date);
+};

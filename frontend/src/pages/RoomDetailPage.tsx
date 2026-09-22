@@ -7,6 +7,7 @@ import { checkRoomAvailability, getRoom } from "@/api/room";
 import { createReservation } from "@/api/reservation";
 
 import RoomImageGallery from "@/components/room/RoomImageGallery";
+
 import { formatDate, isValidDate } from "@/utils/date";
 
 export default function RoomDetailPage() {
@@ -15,8 +16,11 @@ export default function RoomDetailPage() {
   const id = Number(roomId);
 
   const [searchParams] = useSearchParams();
+
   const checkIn = searchParams.get("checkIn") ?? "";
+
   const checkOut = searchParams.get("checkOut") ?? "";
+
   const validDates =
     isValidDate(checkIn) &&
     isValidDate(checkOut) &&
@@ -48,16 +52,22 @@ export default function RoomDetailPage() {
     queryFn: () => checkRoomAvailability(id, checkIn, checkOut, quantity),
     enabled: Number.isInteger(id) && id > 0 && validDates,
   });
+
   const available =
     !availabilityQuery.isFetching &&
     !availabilityQuery.isError &&
     availabilityQuery.data?.available === true &&
     availabilityQuery.data.totalPrice !== null;
-  const reservationMutation = useMutation({ mutationFn: createReservation });
-  if (!validDates)
+
+  const reservationMutation = useMutation({
+    mutationFn: createReservation,
+  });
+
+  if (!validDates) {
     return (
       <main className="mx-auto max-w-xl space-y-5 px-4 py-12 text-center">
         <p>예약 날짜를 먼저 선택해 주세요.</p>
+
         <Link
           to="/"
           className="inline-block rounded-xl bg-black px-6 py-3 text-white"
@@ -66,31 +76,52 @@ export default function RoomDetailPage() {
         </Link>
       </main>
     );
+  }
 
   if (isLoading) {
     return (
-      <main className="p-10 text-center">객실 정보를 불러오는 중입니다.</main>
+      <main className="p-10 text-center">상품 정보를 불러오는 중입니다.</main>
     );
   }
 
   if (isError || !room) {
     return (
-      <main className="p-10 text-center">객실 정보를 불러오지 못했습니다.</main>
+      <main className="p-10 text-center">상품 정보를 불러오지 못했습니다.</main>
     );
   }
 
-  const nights =
+  const days =
     checkIn && checkOut
       ? Math.round(
-          (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
+          (new Date(`${checkOut}T00:00:00`).getTime() -
+            new Date(`${checkIn}T00:00:00`).getTime()) /
             (1000 * 60 * 60 * 24),
         )
       : 0;
+
+  const isPyeongsang = room.type === "PYEONGSANG";
+
+  const isSingleDayPyeongsang = isPyeongsang && days === 1;
+
+  const typeLabel = isPyeongsang ? "평상" : "방";
+
+  const startDateLabel = isPyeongsang ? "이용 시작일" : "체크인";
+
+  const endDateLabel = isPyeongsang ? "이용 종료일" : "체크아웃";
+
+  const durationLabel = isPyeongsang
+    ? days === 1
+      ? "하루 이용"
+      : `${days}일 이용`
+    : `${days}박`;
+
+  const unitLabel = isPyeongsang ? "기본 1일" : "기본 1박";
 
   const totalPrice =
     available === true ? (availabilityQuery.data?.totalPrice ?? 0) : 0;
 
   const remainingCount = availabilityQuery.data?.remainingCount;
+
   const maxQuantity = Math.min(room.stockCount, remainingCount ?? 0);
 
   const decreaseGuestCount = () => {
@@ -107,7 +138,7 @@ export default function RoomDetailPage() {
 
   const handleReservation = () => {
     if (!checkIn || !checkOut) {
-      alert("체크인과 체크아웃 날짜를 선택해 주세요.");
+      alert("예약 날짜를 선택해 주세요.");
 
       return;
     }
@@ -120,16 +151,19 @@ export default function RoomDetailPage() {
 
     if (!guestName.trim()) {
       alert("예약자 이름을 입력해 주세요.");
+
       return;
     }
 
     if (!phoneNumber.trim()) {
       alert("전화번호를 입력해 주세요.");
+
       return;
     }
 
     if (!depositorName.trim()) {
       alert("입금자명을 입력해 주세요.");
+
       return;
     }
 
@@ -172,7 +206,7 @@ export default function RoomDetailPage() {
               </div>
 
               <div className="flex justify-between gap-5">
-                <span className="text-gray-500">객실</span>
+                <span className="text-gray-500">상품</span>
 
                 <strong>{reservation.roomName}</strong>
               </div>
@@ -186,10 +220,24 @@ export default function RoomDetailPage() {
               <div className="flex justify-between gap-5">
                 <span className="text-gray-500">일정</span>
 
-                <strong className="text-right">
-                  {reservation.checkIn}
-                  <br />~ {reservation.checkOut}
-                </strong>
+                {isSingleDayPyeongsang ? (
+                  <strong className="text-right">
+                    {reservation.checkIn}
+                    <br />
+                    하루 이용
+                  </strong>
+                ) : (
+                  <strong className="text-right">
+                    {reservation.checkIn}
+                    <br />~ {reservation.checkOut}
+                  </strong>
+                )}
+              </div>
+
+              <div className="flex justify-between gap-5">
+                <span className="text-gray-500">이용 기간</span>
+
+                <strong>{durationLabel}</strong>
               </div>
 
               <div className="flex justify-between gap-5">
@@ -230,6 +278,7 @@ export default function RoomDetailPage() {
 
   return (
     <div className="min-h-screen bg-white pb-[calc(13rem+env(safe-area-inset-bottom))] sm:pb-28">
+      {/* 이미지 */}
       <section className="mx-auto max-w-4xl">
         <div className="relative">
           <RoomImageGallery roomId={room.roomId} roomName={room.name} />
@@ -245,15 +294,14 @@ export default function RoomDetailPage() {
       </section>
 
       <main className="mx-auto max-w-4xl px-4 sm:px-5">
+        {/* 상품 정보 */}
         <section className="border-b py-8">
-          <p className="text-sm text-gray-500">
-            {room.type === "ROOM" ? "방" : "평상"}
-          </p>
+          <p className="text-sm text-gray-500">{typeLabel}</p>
 
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{room.name}</h1>
 
           <p className="mt-6 whitespace-pre-line text-sm leading-7 text-gray-600">
-            {room.description || "객실 설명이 없습니다."}
+            {room.description || "상품 설명이 없습니다."}
           </p>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -262,7 +310,7 @@ export default function RoomDetailPage() {
                 {room.price.toLocaleString()}원
               </span>
 
-              <span className="ml-1 text-sm text-gray-500">/ 기본 1박</span>
+              <span className="ml-1 text-sm text-gray-500">/ {unitLabel}</span>
             </div>
 
             <p className="text-sm text-gray-500">
@@ -277,31 +325,42 @@ export default function RoomDetailPage() {
           )}
 
           <p className="mt-3 text-xs text-gray-400">
-            날짜에 따라 실제 숙박 요금이 달라질 수 있습니다.
+            날짜에 따라 실제 이용 요금이 달라질 수 있습니다.
           </p>
         </section>
 
+        {/* 선택 일정 */}
         <section className="border-b py-8">
           <h2 className="text-xl font-bold">선택 일정</h2>
-          <p className="mt-2 text-sm text-gray-500">{nights}박</p>
+
+          <p className="mt-2 text-sm font-medium">{durationLabel}</p>
+
           <Link to="/" className="mt-2 inline-block text-sm underline">
             날짜 변경하기
           </Link>
 
-          {(checkIn || checkOut) && (
+          {isSingleDayPyeongsang ? (
+            <div className="mt-5 rounded-2xl bg-gray-50 p-4">
+              <p className="text-xs text-gray-500">이용일</p>
+
+              <p className="mt-1 font-bold">{checkIn}</p>
+
+              <p className="mt-2 text-sm text-gray-500">하루 이용</p>
+            </div>
+          ) : (
             <div className="mt-5 grid grid-cols-1 gap-2 rounded-2xl bg-gray-50 p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
               <div>
-                <p className="text-xs text-gray-500">체크인</p>
+                <p className="text-xs text-gray-500">{startDateLabel}</p>
 
-                <p className="mt-1 font-bold">{checkIn || "날짜 선택"}</p>
+                <p className="mt-1 font-bold">{checkIn}</p>
               </div>
 
               <ArrowRight size={20} className="hidden text-gray-300 sm:block" />
 
               <div className="sm:text-right">
-                <p className="text-xs text-gray-500">체크아웃</p>
+                <p className="text-xs text-gray-500">{endDateLabel}</p>
 
-                <p className="mt-1 font-bold">{checkOut || "날짜 선택"}</p>
+                <p className="mt-1 font-bold">{checkOut}</p>
               </div>
             </div>
           )}
@@ -324,6 +383,7 @@ export default function RoomDetailPage() {
               </button>
             </p>
           )}
+
           {availabilityQuery.data &&
             !availabilityQuery.isFetching &&
             !available && (
@@ -332,6 +392,7 @@ export default function RoomDetailPage() {
                 없습니다.
               </p>
             )}
+
           {available === true && (
             <div className="mt-4 rounded-xl bg-green-50 p-4 text-center">
               <p className="text-sm font-semibold text-green-600">
@@ -344,15 +405,17 @@ export default function RoomDetailPage() {
                 </p>
               )}
 
-              {nights > 0 && (
+              {days > 0 && (
                 <p className="mt-1 text-sm text-gray-600">
-                  {nights}박 · {quantity}개 · {totalPrice.toLocaleString()}원
+                  {durationLabel} · {quantity}개 · {totalPrice.toLocaleString()}
+                  원
                 </p>
               )}
             </div>
           )}
         </section>
 
+        {/* 수량 */}
         {room.stockCount > 1 && (
           <section className="border-b py-8">
             <div className="flex items-center justify-between gap-4">
@@ -393,6 +456,7 @@ export default function RoomDetailPage() {
           </section>
         )}
 
+        {/* 인원 */}
         <section className="border-b py-8">
           <div className="flex items-center justify-between">
             <div>
@@ -429,6 +493,7 @@ export default function RoomDetailPage() {
           </div>
         </section>
 
+        {/* 예약자 정보 */}
         <section className="py-8">
           <h2 className="text-xl font-bold">예약자 정보</h2>
 
@@ -476,15 +541,16 @@ export default function RoomDetailPage() {
         </section>
       </main>
 
+      {/* 하단 예약 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between">
           <div>
             {availabilityQuery.isFetching ? (
               <p className="text-sm text-gray-500">금액 확인 중...</p>
-            ) : nights > 0 && available === true ? (
+            ) : days > 0 && available === true ? (
               <>
                 <p className="text-xs text-gray-500">
-                  {nights}박 · {quantity}개 총 금액
+                  {durationLabel} · {quantity}개 총 금액
                 </p>
 
                 <p className="text-lg font-bold">
@@ -493,7 +559,7 @@ export default function RoomDetailPage() {
               </>
             ) : (
               <p className="text-sm text-gray-500">
-                예약 가능 여부를 확인해 주세요
+                예약 가능 여부를 확인해 주세요.
               </p>
             )}
           </div>
