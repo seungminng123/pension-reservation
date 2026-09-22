@@ -1,6 +1,7 @@
 import api from "@/api/axios";
 
 import type {
+  AvailableRoom,
   RoomAvailability,
   RoomAvailabilityCheck,
   RoomDetail,
@@ -83,4 +84,11 @@ export const getRoomImageDetailUrl = (roomId: number, imageId: number) => {
   const baseUrl = String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "");
 
   return `${baseUrl}/api/v1/rooms/${roomId}/images/${imageId}`;
+};
+
+export const getAvailableRooms = async (checkIn: string, checkOut: string) => {
+  const response = await api.get<AvailableRoom[]>("/api/v1/rooms/available", {
+    params: { checkIn, checkOut },
+  });
+  return response.data;
 };

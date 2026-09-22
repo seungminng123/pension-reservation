@@ -1,6 +1,10 @@
 import api from "@/api/axios";
 
 import type {
+  AdminReservationCalendarDay,
+  AdminReservationCalendarItem,
+  DailySettlement,
+  MonthlySettlement,
   AdminLoginRequest,
   AdminLoginResponse,
   AdminReservationDetail,
@@ -13,6 +17,7 @@ import type {
   AdminRoomUpdateRequest,
 } from "@/types/admin";
 import type {
+  PaymentMethod,
   ReservationStatus,
   ReservationStatusResponse,
 } from "@/types/reservation";
@@ -56,9 +61,13 @@ export const getAdminReservation = async (reservationId: number) => {
 };
 
 // 예약 확정
-export const confirmAdminReservation = async (reservationId: number) => {
+export const confirmAdminReservation = async (
+  reservationId: number,
+  paymentMethod: PaymentMethod,
+) => {
   const response = await api.patch<ReservationStatusResponse>(
     `/api/v1/admin/reservations/${reservationId}/confirm`,
+    { paymentMethod },
   );
 
   return response.data;
@@ -181,4 +190,35 @@ export const resetAdminRoomPrices = async (
   await api.delete(`/api/v1/admin/rooms/${roomId}/prices`, {
     data: request,
   });
+};
+
+export const getAdminReservationCalendar = async (
+  year: number,
+  month: number,
+) => {
+  const response = await api.get<AdminReservationCalendarDay[]>(
+    "/api/v1/admin/reservations/calendar",
+    { params: { year, month } },
+  );
+  return response.data;
+};
+export const getAdminReservationsByDate = async (date: string) => {
+  const response = await api.get<AdminReservationCalendarItem[]>(
+    "/api/v1/admin/reservations/calendar/" + date,
+  );
+  return response.data;
+};
+export const getDailySettlement = async (date: string) => {
+  const response = await api.get<DailySettlement>(
+    "/api/v1/admin/settlements/daily",
+    { params: { date } },
+  );
+  return response.data;
+};
+export const getMonthlySettlement = async (year: number, month: number) => {
+  const response = await api.get<MonthlySettlement>(
+    "/api/v1/admin/settlements/monthly",
+    { params: { year, month } },
+  );
+  return response.data;
 };

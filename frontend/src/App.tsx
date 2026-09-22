@@ -1,3 +1,4 @@
+import AdminSettlementsPage from "@/pages/admin/AdminSettlementsPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
@@ -31,6 +32,8 @@ export default function App() {
           <Route index element={<Navigate to="reservations" replace />} />
 
           <Route path="reservations" element={<AdminReservationsPage />} />
+
+          <Route path="settlements" element={<AdminSettlementsPage />} />
 
           <Route path="rooms" element={<AdminRoomsPage />} />
 

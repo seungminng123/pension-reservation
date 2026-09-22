@@ -1,3 +1,5 @@
+export type PaymentMethod = "CARD" | "CASH";
+
 export type ReservationStatus =
   "PENDING" | "CONFIRMED" | "CANCEL_REQUESTED" | "CANCELED";
 

@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Banknote, CreditCard, Check, X } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -9,7 +9,9 @@ import {
   getAdminReservations,
 } from "@/api/admin";
 
-import type { ReservationStatus } from "@/types/reservation";
+import Modal from "@/components/common/Modal";
+import AdminReservationCalendar from "@/components/admin/AdminReservationCalendar";
+import type { PaymentMethod, ReservationStatus } from "@/types/reservation";
 
 const statusLabels: Record<ReservationStatus, string> = {
   PENDING: "입금 확인 대기",
@@ -24,14 +26,26 @@ export default function AdminReservationsPage() {
   const [status, setStatus] = useState<ReservationStatus | "ALL">("ALL");
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<number | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
+    null,
+  );
 
-  const { data: reservations, isLoading } = useQuery({
+  const {
+    data: reservations,
+    isLoading,
+    isError: listError,
+  } = useQuery({
     queryKey: ["adminReservations", status],
 
     queryFn: () => getAdminReservations(status === "ALL" ? undefined : status),
   });
 
-  const { data: selectedReservation } = useQuery({
+  const {
+    data: selectedReservation,
+    isLoading: detailLoading,
+    isError: detailError,
+  } = useQuery({
     queryKey: ["adminReservation", selectedId],
 
     queryFn: () => getAdminReservation(selectedId!),
@@ -40,21 +54,31 @@ export default function AdminReservationsPage() {
   });
 
   const refreshReservations = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ["adminReservations"],
-    });
-
-    if (selectedId) {
-      await queryClient.invalidateQueries({
-        queryKey: ["adminReservation", selectedId],
-      });
-    }
+    await Promise.all(
+      [
+        "adminReservations",
+        "adminReservation",
+        "adminReservationCalendar",
+        "adminReservationsByDate",
+        "adminSettlements",
+        "availableRooms",
+        "roomAvailabilityCheck",
+      ].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+    );
   };
-
   const confirmMutation = useMutation({
-    mutationFn: confirmAdminReservation,
-
-    onSuccess: refreshReservations,
+    mutationFn: ({
+      reservationId,
+      paymentMethod,
+    }: {
+      reservationId: number;
+      paymentMethod: PaymentMethod;
+    }) => confirmAdminReservation(reservationId, paymentMethod),
+    onSuccess: async () => {
+      await refreshReservations();
+      setPaymentTarget(null);
+      setPaymentMethod(null);
+    },
   });
 
   const cancelMutation = useMutation({
@@ -62,10 +86,6 @@ export default function AdminReservationsPage() {
 
     onSuccess: refreshReservations,
   });
-
-  if (isLoading) {
-    return <p>예약 목록을 불러오는 중입니다.</p>;
-  }
 
   return (
     <div>
@@ -97,8 +117,16 @@ export default function AdminReservationsPage() {
         </select>
       </div>
 
+      <AdminReservationCalendar onSelect={setSelectedId} />
+
       <div className="mt-8 overflow-hidden rounded-2xl border bg-white">
-        {!reservations?.length ? (
+        {isLoading ? (
+          <p className="p-6">예약 목록을 불러오는 중입니다.</p>
+        ) : listError ? (
+          <p role="alert" className="p-6 text-red-500">
+            예약 정보를 불러오지 못했습니다.
+          </p>
+        ) : !reservations?.length ? (
           <div className="p-12 text-center text-gray-500">
             예약 내역이 없습니다.
           </div>
@@ -139,6 +167,12 @@ export default function AdminReservationsPage() {
         )}
       </div>
 
+      {detailLoading && <p className="mt-6">예약 상세를 불러오는 중입니다.</p>}
+      {detailError && (
+        <p role="alert" className="mt-6 text-red-500">
+          예약 정보를 불러오지 못했습니다.
+        </p>
+      )}
       {selectedReservation && (
         <section className="mt-8 rounded-2xl border bg-white p-4 sm:p-6">
           <div className="flex items-center justify-between">
@@ -220,13 +254,41 @@ export default function AdminReservationsPage() {
             </p>
           </div>
 
+          {selectedReservation.status === "CONFIRMED" && (
+            <div className="mt-5 space-y-2 rounded-xl bg-gray-50 p-4 text-sm">
+              <p>
+                결제수단:{" "}
+                {selectedReservation.paymentMethod === "CARD"
+                  ? "카드"
+                  : selectedReservation.paymentMethod === "CASH"
+                    ? "현금"
+                    : "미등록"}
+              </p>
+              {selectedReservation.confirmedAt && (
+                <p>
+                  확정 시간:{" "}
+                  {new Date(selectedReservation.confirmedAt).toLocaleString(
+                    "ko-KR",
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+          {cancelMutation.isError && (
+            <p role="alert" className="mt-4 text-red-500">
+              예약 취소에 실패했습니다. 다시 시도해 주세요.
+            </p>
+          )}
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             {selectedReservation.status === "PENDING" && (
               <button
                 type="button"
-                onClick={() =>
-                  confirmMutation.mutate(selectedReservation.reservationId)
-                }
+                onClick={() => {
+                  confirmMutation.reset();
+                  setPaymentMethod(null);
+                  setPaymentTarget(selectedReservation.reservationId);
+                }}
+                disabled={confirmMutation.isPending || cancelMutation.isPending}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-black py-3 text-white"
               >
                 <Check size={20} strokeWidth={2} aria-hidden="true" /> 입금 확인
@@ -240,6 +302,7 @@ export default function AdminReservationsPage() {
                 onClick={() =>
                   cancelMutation.mutate(selectedReservation.reservationId)
                 }
+                disabled={confirmMutation.isPending || cancelMutation.isPending}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500 py-3 text-red-500"
               >
                 <X size={20} strokeWidth={2} aria-hidden="true" /> 예약 취소
@@ -247,6 +310,68 @@ export default function AdminReservationsPage() {
             )}
           </div>
         </section>
+      )}
+      {paymentTarget !== null && (
+        <Modal
+          title="예약 확정"
+          busy={confirmMutation.isPending}
+          onClose={() => setPaymentTarget(null)}
+        >
+          <p className="text-gray-500">결제 수단을 선택해 주세요.</p>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {(["CARD", "CASH"] as const).map((method) => (
+              <button
+                key={method}
+                type="button"
+                disabled={confirmMutation.isPending}
+                aria-pressed={paymentMethod === method}
+                onClick={() => setPaymentMethod(method)}
+                className={
+                  "flex min-h-16 items-center justify-center gap-2 rounded-xl border " +
+                  (paymentMethod === method
+                    ? "bg-black text-white"
+                    : "bg-white")
+                }
+              >
+                {method === "CARD" ? (
+                  <CreditCard size={20} />
+                ) : (
+                  <Banknote size={20} />
+                )}
+                {method === "CARD" ? "카드" : "현금"}
+              </button>
+            ))}
+          </div>
+          {confirmMutation.isError && (
+            <p role="alert" className="mt-4 text-red-500">
+              예약 확정에 실패했습니다. 다시 시도해 주세요.
+            </p>
+          )}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={confirmMutation.isPending}
+              onClick={() => setPaymentTarget(null)}
+              className="min-h-11 rounded-xl border p-3"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              disabled={!paymentMethod || confirmMutation.isPending}
+              onClick={() => {
+                if (paymentMethod)
+                  confirmMutation.mutate({
+                    reservationId: paymentTarget,
+                    paymentMethod,
+                  });
+              }}
+              className="min-h-11 rounded-xl bg-black p-3 text-white disabled:bg-gray-300"
+            >
+              {confirmMutation.isPending ? "확정 중..." : "예약 확정"}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

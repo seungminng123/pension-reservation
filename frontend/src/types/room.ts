@@ -1,6 +1,22 @@
+export type RoomType = "ROOM" | "PYEONGSANG";
+
+export type AvailableRoom = {
+  roomId: number;
+  type: RoomType;
+  name: string;
+  price: number;
+  guestCount: number;
+  maxGuests: number;
+  stockCount: number;
+  remainingCount: number;
+  available: boolean;
+  totalPrice: number;
+  hasImage: boolean;
+};
+
 export type RoomListItem = {
   roomId: number;
-  type: string;
+  type: RoomType;
   name: string;
   price: number;
   maxGuests: number;
@@ -12,7 +28,7 @@ export type RoomListItem = {
 
 export type RoomDetail = {
   roomId: number;
-  type: string;
+  type: RoomType;
   name: string;
   description: string | null;
   price: number;

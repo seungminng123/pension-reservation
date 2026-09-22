@@ -1,5 +1,5 @@
-import type { ReservationStatus } from "@/types/reservation";
-import type { RoomListItem } from "@/types/room";
+import type { PaymentMethod, ReservationStatus } from "@/types/reservation";
+import type { RoomListItem, RoomType } from "@/types/room";
 
 export type AdminLoginRequest = {
   loginId: string;
@@ -12,6 +12,9 @@ export type AdminLoginResponse = {
 };
 
 export type AdminReservationListItem = {
+  roomType: RoomType;
+  paymentMethod: PaymentMethod | null;
+  confirmedAt: string | null;
   reservationId: number;
   reservationNumber: string;
   guestName: string;
@@ -23,6 +26,9 @@ export type AdminReservationListItem = {
 };
 
 export type AdminReservationDetail = {
+  roomType: RoomType;
+  paymentMethod: PaymentMethod | null;
+  confirmedAt: string | null;
   reservationId: number;
   reservationNumber: string;
   guestName: string;
@@ -43,7 +49,7 @@ export type AdminReservationDetail = {
 export type AdminRoom = RoomListItem;
 
 export type AdminRoomCreateRequest = {
-  type: string;
+  type: RoomType;
   name: string;
   description: string;
   price: number;
@@ -54,7 +60,7 @@ export type AdminRoomCreateRequest = {
 };
 
 export type AdminRoomUpdateRequest = {
-  type: string;
+  type: RoomType;
   name: string;
   description: string;
   price: number;
@@ -85,4 +91,62 @@ export type AdminRoomPriceSetRequest = {
 
 export type AdminRoomPriceResetRequest = {
   dates: string[];
+};
+
+export type AdminReservationCalendarDay = {
+  date: string;
+  reservationCount: number;
+  reservedQuantity: number;
+  pendingCount: number;
+  confirmedCount: number;
+  cancelRequestedCount: number;
+};
+export type AdminReservationCalendarItem = {
+  reservationId: number;
+  reservationNumber: string;
+  roomId: number;
+  roomType: RoomType;
+  roomName: string;
+  guestName: string;
+  quantity: number;
+  checkIn: string;
+  checkOut: string;
+  status: ReservationStatus;
+};
+export type SettlementItem = {
+  reservationId: number;
+  reservationNumber: string;
+  roomType: RoomType;
+  roomName: string;
+  quantity: number;
+  totalPrice: number;
+  paymentMethod: PaymentMethod;
+  confirmedAt: string;
+};
+export type DailySettlement = {
+  date: string;
+  totalSales: number;
+  cardSales: number;
+  cashSales: number;
+  confirmedReservationCount: number;
+  totalQuantity: number;
+  items: SettlementItem[];
+};
+export type MonthlySettlementDay = {
+  date: string;
+  totalSales: number;
+  cardSales: number;
+  cashSales: number;
+  reservationCount: number;
+  totalQuantity: number;
+};
+export type MonthlySettlement = {
+  year: number;
+  month: number;
+  totalSales: number;
+  cardSales: number;
+  cashSales: number;
+  confirmedReservationCount: number;
+  totalQuantity: number;
+  dailySettlements: MonthlySettlementDay[];
 };

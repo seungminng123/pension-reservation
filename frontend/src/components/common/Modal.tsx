@@ -1,0 +1,53 @@
+﻿import { useEffect, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
+export default function Modal({
+  title,
+  children,
+  onClose,
+  busy = false,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+  busy?: boolean;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    dialog?.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = overflow;
+      if (previous instanceof HTMLElement) previous.focus();
+    };
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      aria-label={title}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!busy) onClose();
+      }}
+      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-3xl overflow-y-auto rounded-2xl border bg-white p-4 text-gray-900 backdrop:bg-black/50 sm:p-6"
+    >
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h2 className="text-xl font-bold">{title}</h2>
+        <button
+          type="button"
+          autoFocus
+          disabled={busy}
+          aria-label="닫기"
+          onClick={onClose}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border disabled:opacity-30"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      {children}
+    </dialog>
+  );
+}

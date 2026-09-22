@@ -1,3 +1,4 @@
+import type { RoomType } from "@/types/room";
 import {
   ChevronLeft,
   ChevronRight,
@@ -27,7 +28,7 @@ import {
 } from "@/api/room";
 
 const initialForm = {
-  type: "",
+  type: "ROOM" as RoomType,
   name: "",
   description: "",
   price: "",
@@ -347,17 +348,20 @@ export default function AdminRoomsPage() {
           onSubmit={handleSubmit}
           className="mt-6 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2"
         >
-          <input
-            placeholder="객실 타입"
+          <select
+            aria-label="상품 종류"
             value={form.type}
             onChange={(event) =>
               setForm({
                 ...form,
-                type: event.target.value,
+                type: event.target.value as RoomType,
               })
             }
             className="min-w-0 w-full rounded-lg border p-3"
-          />
+          >
+            <option value="ROOM">방</option>
+            <option value="PYEONGSANG">평상</option>
+          </select>
 
           <input
             placeholder="객실명"
@@ -624,7 +628,9 @@ export default function AdminRoomsPage() {
 
                 <div className="p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-gray-500">{room.type}</p>
+                    <p className="text-sm text-gray-500">
+                      {room.type === "ROOM" ? "방" : "평상"}
+                    </p>
 
                     <span
                       className={[

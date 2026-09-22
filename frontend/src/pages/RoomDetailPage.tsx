@@ -1,22 +1,27 @@
 import { ArrowLeft, ArrowRight, Check, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { checkRoomAvailability, getRoom } from "@/api/room";
 import { createReservation } from "@/api/reservation";
 
 import RoomImageGallery from "@/components/room/RoomImageGallery";
-import RoomReservationCalendar from "@/components/room/RoomReservationCalendar";
+import { formatDate, isValidDate } from "@/utils/date";
 
 export default function RoomDetailPage() {
   const { roomId } = useParams();
 
   const id = Number(roomId);
 
-  const [checkIn, setCheckIn] = useState("");
-
-  const [checkOut, setCheckOut] = useState("");
+  const [searchParams] = useSearchParams();
+  const checkIn = searchParams.get("checkIn") ?? "";
+  const checkOut = searchParams.get("checkOut") ?? "";
+  const validDates =
+    isValidDate(checkIn) &&
+    isValidDate(checkOut) &&
+    checkIn >= formatDate(new Date()) &&
+    checkOut > checkIn;
 
   const [guestCount, setGuestCount] = useState(1);
 
@@ -28,8 +33,6 @@ export default function RoomDetailPage() {
 
   const [depositorName, setDepositorName] = useState("");
 
-  const [available, setAvailable] = useState<boolean | null>(null);
-
   const {
     data: room,
     isLoading,
@@ -40,59 +43,29 @@ export default function RoomDetailPage() {
     enabled: Number.isFinite(id),
   });
 
-  const availabilityMutation = useMutation({
-    mutationFn: ({
-      checkIn,
-      checkOut,
-      quantity,
-    }: {
-      checkIn: string;
-      checkOut: string;
-      quantity: number;
-    }) => checkRoomAvailability(id, checkIn, checkOut, quantity),
-
-    onSuccess: (data) => {
-      setAvailable(data.available);
-
-      if (!data.available) {
-        if (data.remainingCount > 0) {
-          alert(
-            `선택한 기간에는 최대 ${data.remainingCount}개까지 예약할 수 있습니다.`,
-          );
-        } else {
-          alert("선택한 일정에 예약 마감된 날짜가 포함되어 있습니다.");
-        }
-      }
-    },
+  const availabilityQuery = useQuery({
+    queryKey: ["roomAvailabilityCheck", id, checkIn, checkOut, quantity],
+    queryFn: () => checkRoomAvailability(id, checkIn, checkOut, quantity),
+    enabled: Number.isInteger(id) && id > 0 && validDates,
   });
-
-  const reservationMutation = useMutation({
-    mutationFn: createReservation,
-  });
-
-  const checkAvailability = (
-    nextCheckIn: string,
-    nextCheckOut: string,
-    nextQuantity: number,
-  ) => {
-    if (!nextCheckIn || !nextCheckOut) {
-      return;
-    }
-
-    availabilityMutation.mutate({
-      checkIn: nextCheckIn,
-      checkOut: nextCheckOut,
-      quantity: nextQuantity,
-    });
-  };
-
-  const handleDateChange = (nextCheckIn: string, nextCheckOut: string) => {
-    setCheckIn(nextCheckIn);
-    setCheckOut(nextCheckOut);
-    setAvailable(null);
-
-    checkAvailability(nextCheckIn, nextCheckOut, quantity);
-  };
+  const available =
+    !availabilityQuery.isFetching &&
+    !availabilityQuery.isError &&
+    availabilityQuery.data?.available === true &&
+    availabilityQuery.data.totalPrice !== null;
+  const reservationMutation = useMutation({ mutationFn: createReservation });
+  if (!validDates)
+    return (
+      <main className="mx-auto max-w-xl space-y-5 px-4 py-12 text-center">
+        <p>예약 날짜를 먼저 선택해 주세요.</p>
+        <Link
+          to="/"
+          className="inline-block rounded-xl bg-black px-6 py-3 text-white"
+        >
+          날짜 선택하기
+        </Link>
+      </main>
+    );
 
   if (isLoading) {
     return (
@@ -115,9 +88,10 @@ export default function RoomDetailPage() {
       : 0;
 
   const totalPrice =
-    available === true ? (availabilityMutation.data?.totalPrice ?? 0) : 0;
+    available === true ? (availabilityQuery.data?.totalPrice ?? 0) : 0;
 
-  const remainingCount = availabilityMutation.data?.remainingCount;
+  const remainingCount = availabilityQuery.data?.remainingCount;
+  const maxQuantity = Math.min(room.stockCount, remainingCount ?? 0);
 
   const decreaseGuestCount = () => {
     setGuestCount((current) => Math.max(1, current - 1));
@@ -128,13 +102,7 @@ export default function RoomDetailPage() {
   };
 
   const changeQuantity = (nextQuantity: number) => {
-    const safeQuantity = Math.max(1, Math.min(room.stockCount, nextQuantity));
-
-    setQuantity(safeQuantity);
-
-    setAvailable(null);
-
-    checkAvailability(checkIn, checkOut, safeQuantity);
+    setQuantity(Math.max(1, Math.min(maxQuantity, nextQuantity)));
   };
 
   const handleReservation = () => {
@@ -144,7 +112,7 @@ export default function RoomDetailPage() {
       return;
     }
 
-    if (available !== true) {
+    if (!available || quantity > maxQuantity || reservationMutation.isPending) {
       alert("예약 가능한 일정인지 확인해 주세요.");
 
       return;
@@ -278,9 +246,15 @@ export default function RoomDetailPage() {
 
       <main className="mx-auto max-w-4xl px-4 sm:px-5">
         <section className="border-b py-8">
-          <p className="text-sm text-gray-500">{room.type}</p>
+          <p className="text-sm text-gray-500">
+            {room.type === "ROOM" ? "방" : "평상"}
+          </p>
 
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{room.name}</h1>
+
+          <p className="mt-6 whitespace-pre-line text-sm leading-7 text-gray-600">
+            {room.description || "객실 설명이 없습니다."}
+          </p>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -305,27 +279,14 @@ export default function RoomDetailPage() {
           <p className="mt-3 text-xs text-gray-400">
             날짜에 따라 실제 숙박 요금이 달라질 수 있습니다.
           </p>
-
-          <p className="mt-6 whitespace-pre-line text-sm leading-7 text-gray-600">
-            {room.description || "객실 설명이 없습니다."}
-          </p>
         </section>
 
         <section className="border-b py-8">
-          <h2 className="text-xl font-bold">날짜 선택</h2>
-
-          <p className="mt-2 text-sm text-gray-500">
-            체크인과 체크아웃 날짜를 순서대로 선택해 주세요.
-          </p>
-
-          <div className="mt-5">
-            <RoomReservationCalendar
-              roomId={room.roomId}
-              checkIn={checkIn}
-              checkOut={checkOut}
-              onChange={handleDateChange}
-            />
-          </div>
+          <h2 className="text-xl font-bold">선택 일정</h2>
+          <p className="mt-2 text-sm text-gray-500">{nights}박</p>
+          <Link to="/" className="mt-2 inline-block text-sm underline">
+            날짜 변경하기
+          </Link>
 
           {(checkIn || checkOut) && (
             <div className="mt-5 grid grid-cols-1 gap-2 rounded-2xl bg-gray-50 p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
@@ -345,12 +306,32 @@ export default function RoomDetailPage() {
             </div>
           )}
 
-          {availabilityMutation.isPending && (
+          {availabilityQuery.isFetching && (
             <p className="mt-4 text-center text-sm text-gray-500">
               예약 가능 여부와 금액을 확인하고 있습니다.
             </p>
           )}
 
+          {availabilityQuery.isError && (
+            <p role="alert" className="mt-4 text-red-500">
+              예약 가능 여부를 확인하지 못했습니다.{" "}
+              <button
+                type="button"
+                onClick={() => void availabilityQuery.refetch()}
+                className="underline"
+              >
+                다시 시도
+              </button>
+            </p>
+          )}
+          {availabilityQuery.data &&
+            !availabilityQuery.isFetching &&
+            !available && (
+              <p role="status" className="mt-4 text-red-500">
+                선택 기간 잔여 {remainingCount}개 · 현재 수량으로 예약할 수
+                없습니다.
+              </p>
+            )}
           {available === true && (
             <div className="mt-4 rounded-xl bg-green-50 p-4 text-center">
               <p className="text-sm font-semibold text-green-600">
@@ -379,7 +360,7 @@ export default function RoomDetailPage() {
                 <h2 className="text-xl font-bold">수량</h2>
 
                 <p className="mt-1 text-sm text-gray-500">
-                  최대 {room.stockCount}개
+                  최대 {maxQuantity}개
                 </p>
               </div>
 
@@ -388,7 +369,7 @@ export default function RoomDetailPage() {
                   type="button"
                   aria-label="수량 감소"
                   onClick={() => changeQuantity(quantity - 1)}
-                  disabled={quantity <= 1}
+                  disabled={quantity <= 1 || availabilityQuery.isFetching}
                   className="flex h-11 w-11 items-center justify-center rounded-full border disabled:opacity-30"
                 >
                   <Minus size={20} />
@@ -400,7 +381,9 @@ export default function RoomDetailPage() {
                   type="button"
                   aria-label="수량 증가"
                   onClick={() => changeQuantity(quantity + 1)}
-                  disabled={quantity >= room.stockCount}
+                  disabled={
+                    availabilityQuery.isFetching || quantity >= maxQuantity
+                  }
                   className="flex h-11 w-11 items-center justify-center rounded-full border disabled:opacity-30"
                 >
                   <Plus size={20} />
@@ -496,7 +479,7 @@ export default function RoomDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between">
           <div>
-            {availabilityMutation.isPending ? (
+            {availabilityQuery.isFetching ? (
               <p className="text-sm text-gray-500">금액 확인 중...</p>
             ) : nights > 0 && available === true ? (
               <>
@@ -509,7 +492,9 @@ export default function RoomDetailPage() {
                 </p>
               </>
             ) : (
-              <p className="text-sm text-gray-500">날짜를 선택해 주세요</p>
+              <p className="text-sm text-gray-500">
+                예약 가능 여부를 확인해 주세요
+              </p>
             )}
           </div>
 
@@ -520,7 +505,8 @@ export default function RoomDetailPage() {
               !checkIn ||
               !checkOut ||
               available !== true ||
-              availabilityMutation.isPending ||
+              quantity > maxQuantity ||
+              availabilityQuery.isFetching ||
               reservationMutation.isPending
             }
             className="min-h-12 w-full rounded-xl bg-black px-6 py-3 font-bold text-white disabled:bg-gray-300 sm:w-auto sm:min-w-44"

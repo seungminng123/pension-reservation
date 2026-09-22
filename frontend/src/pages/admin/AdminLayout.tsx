@@ -1,4 +1,4 @@
-import { LogOut, CalendarDays, BedDouble } from "lucide-react";
+import { LogOut, CalendarDays, BedDouble, WalletCards } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAdminAuthStore } from "@/stores/adminAuth";
@@ -40,7 +40,7 @@ export default function AdminLayout() {
         <aside className="w-full shrink-0 md:w-48">
           <nav
             aria-label="관리자 메뉴"
-            className="grid grid-cols-2 gap-2 md:grid-cols-1"
+            className="grid grid-cols-3 gap-2 md:grid-cols-1"
           >
             <NavLink
               to="/admin/reservations"
@@ -68,6 +68,17 @@ export default function AdminLayout() {
             >
               <BedDouble size={20} strokeWidth={2} aria-hidden="true" /> 객실
               관리
+            </NavLink>
+            <NavLink
+              to="/admin/settlements"
+              className={({ isActive }) =>
+                "flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-3 text-sm sm:px-4 sm:text-base md:justify-start " +
+                (isActive
+                  ? "bg-black font-medium text-white"
+                  : "text-gray-600 hover:bg-gray-100")
+              }
+            >
+              <WalletCards size={20} aria-hidden="true" /> 정산
             </NavLink>
           </nav>
         </aside>
