@@ -6,6 +6,7 @@ export type ReservationCreateRequest = {
   checkIn: string;
   checkOut: string;
   guestCount: number;
+  quantity: number;
   guestName: string;
   phoneNumber: string;
   depositorName: string;
@@ -24,6 +25,7 @@ export type ReservationResponse = {
   checkIn: string;
   checkOut: string;
   guestCount: number;
+  quantity: number;
   totalPrice: number;
   depositAmount: number;
   status: ReservationStatus;

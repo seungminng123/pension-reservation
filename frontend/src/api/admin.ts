@@ -16,7 +16,7 @@ import type {
   ReservationStatus,
   ReservationStatusResponse,
 } from "@/types/reservation";
-import type { RoomDetail } from "@/types/room";
+import type { RoomDetail, RoomImageMeta } from "@/types/room";
 
 // 관리자 로그인
 export const adminLogin = async (request: AdminLoginRequest) => {
@@ -73,7 +73,7 @@ export const cancelAdminReservation = async (reservationId: number) => {
   return response.data;
 };
 
-// 객실 목록 조회
+// 관리자 객실 목록 조회
 export const getAdminRooms = async () => {
   const response = await api.get<AdminRoom[]>("/api/v1/admin/rooms");
 
@@ -100,13 +100,45 @@ export const updateAdminRoom = async (
   return response.data;
 };
 
-// 객실 이미지 등록
-export const uploadAdminRoomImage = async (roomId: number, file: File) => {
+// 객실 삭제
+export const deleteAdminRoom = async (roomId: number) => {
+  await api.delete(`/api/v1/admin/rooms/${roomId}`);
+};
+
+// 객실 이미지 여러 장 등록
+export const uploadAdminRoomImages = async (roomId: number, files: File[]) => {
   const formData = new FormData();
 
-  formData.append("file", file);
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
 
-  await api.post(`/api/v1/admin/rooms/${roomId}/image`, formData);
+  const response = await api.post<RoomImageMeta[]>(
+    `/api/v1/admin/rooms/${roomId}/images`,
+    formData,
+  );
+
+  return response.data;
+};
+
+// 객실 이미지 삭제
+export const deleteAdminRoomImage = async (roomId: number, imageId: number) => {
+  await api.delete(`/api/v1/admin/rooms/${roomId}/images/${imageId}`);
+};
+
+// 객실 이미지 순서 변경
+export const updateAdminRoomImageOrder = async (
+  roomId: number,
+  imageIds: number[],
+) => {
+  const response = await api.patch<RoomImageMeta[]>(
+    `/api/v1/admin/rooms/${roomId}/images/order`,
+    {
+      imageIds,
+    },
+  );
+
+  return response.data;
 };
 
 // 월별 요금 조회

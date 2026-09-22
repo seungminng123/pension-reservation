@@ -16,6 +16,7 @@ export type AdminReservationListItem = {
   reservationNumber: string;
   guestName: string;
   roomName: string;
+  quantity: number;
   checkIn: string;
   checkOut: string;
   status: ReservationStatus;
@@ -32,6 +33,7 @@ export type AdminReservationDetail = {
   checkIn: string;
   checkOut: string;
   guestCount: number;
+  quantity: number;
   totalPrice: number;
   depositAmount: number;
   status: ReservationStatus;
@@ -47,6 +49,8 @@ export type AdminRoomCreateRequest = {
   price: number;
   maxGuests: number;
   guestCount: number;
+  stockCount: number;
+  saleEnabled: boolean;
 };
 
 export type AdminRoomUpdateRequest = {
@@ -56,6 +60,8 @@ export type AdminRoomUpdateRequest = {
   price: number;
   maxGuests: number;
   guestCount: number;
+  stockCount: number;
+  saleEnabled: boolean;
 };
 
 export type AdminRoomDailyPrice = {

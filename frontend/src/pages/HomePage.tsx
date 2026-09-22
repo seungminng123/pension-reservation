@@ -83,6 +83,11 @@ export default function HomePage() {
                   <p className="text-sm text-gray-500">
                     기준 {room.guestCount}명 · 최대 {room.maxGuests}명
                   </p>
+                  {room.stockCount > 1 && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      총 {room.stockCount}개 운영
+                    </p>
+                  )}
 
                   <p className="font-bold">
                     {room.price.toLocaleString()}원

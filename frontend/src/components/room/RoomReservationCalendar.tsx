@@ -31,7 +31,9 @@ const formatPrice = (price: number) => {
   if (price >= 10000) {
     const tenThousands = price / 10000;
 
-    return `${tenThousands.toLocaleString("ko-KR", { maximumFractionDigits: 4 })}만`;
+    return `${tenThousands.toLocaleString("ko-KR", {
+      maximumFractionDigits: 4,
+    })}만`;
   }
 
   return `${price.toLocaleString()}원`;
@@ -59,15 +61,18 @@ export default function RoomReservationCalendar({
     queryFn: () => getRoomAvailability(roomId, year, month),
   });
 
-  // 예약 불가능 날짜
   const unavailableDates = useMemo(
     () => new Set(data?.unavailableDates ?? []),
     [data],
   );
 
-  // 날짜별 가격
   const priceMap = useMemo(
     () => new Map((data?.dailyPrices ?? []).map((item) => [item.date, item])),
+    [data],
+  );
+
+  const stockMap = useMemo(
+    () => new Map((data?.dailyStocks ?? []).map((item) => [item.date, item])),
     [data],
   );
 
@@ -87,7 +92,6 @@ export default function RoomReservationCalendar({
   const isCurrentMonth =
     year === today.getFullYear() && month === today.getMonth() + 1;
 
-  // 이전 달
   const handlePreviousMonth = () => {
     if (isCurrentMonth) {
       return;
@@ -96,12 +100,10 @@ export default function RoomReservationCalendar({
     setCurrentMonth(new Date(year, month - 2, 1));
   };
 
-  // 다음 달
   const handleNextMonth = () => {
     setCurrentMonth(new Date(year, month, 1));
   };
 
-  // 날짜 선택
   const handleDateClick = (date: Date) => {
     const dateString = formatDate(date);
 
@@ -111,7 +113,6 @@ export default function RoomReservationCalendar({
 
     const unavailable = unavailableDates.has(dateString);
 
-    // 체크인 선택
     if (!checkIn || checkOut) {
       if (unavailable) {
         return;
@@ -122,7 +123,6 @@ export default function RoomReservationCalendar({
       return;
     }
 
-    // 체크인 다시 선택
     if (dateString <= checkIn) {
       if (unavailable) {
         return;
@@ -133,11 +133,10 @@ export default function RoomReservationCalendar({
       return;
     }
 
-    // 체크아웃 선택
+    // 체크아웃 날짜는 해당 날짜 재고를 사용하지 않음
     onChange(checkIn, dateString);
   };
 
-  // 선택 범위 확인
   const isInSelectedRange = (dateString: string) => {
     if (!checkIn) {
       return false;
@@ -151,17 +150,16 @@ export default function RoomReservationCalendar({
   };
 
   return (
-    <div className="rounded-2xl border min-w-0 bg-white p-2 sm:p-6">
-      {/* 월 이동 */}
+    <div className="min-w-0 rounded-2xl border bg-white p-2 sm:p-6">
       <div className="flex items-center justify-between">
         <button
           type="button"
           disabled={isCurrentMonth}
           onClick={handlePreviousMonth}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xl disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded-full border disabled:opacity-30"
           aria-label="이전 달"
         >
-          <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
+          <ChevronLeft size={20} />
         </button>
 
         <h3 className="font-bold">
@@ -171,23 +169,20 @@ export default function RoomReservationCalendar({
         <button
           type="button"
           onClick={handleNextMonth}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xl"
+          className="flex h-11 w-11 items-center justify-center rounded-full border"
           aria-label="다음 달"
         >
-          <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />
+          <ChevronRight size={20} />
         </button>
       </div>
 
-      {/* 요일 */}
       <div className="mt-6 grid grid-cols-7 text-center text-xs font-medium text-gray-400">
         <span className="text-red-400">일</span>
-
         <span>월</span>
         <span>화</span>
         <span>수</span>
         <span>목</span>
         <span>금</span>
-
         <span className="text-blue-400">토</span>
       </div>
 
@@ -201,11 +196,10 @@ export default function RoomReservationCalendar({
         </div>
       ) : (
         <div className="mt-2 grid grid-cols-7 gap-0.5 sm:gap-1">
-          {/* 빈 날짜 */}
           {Array.from({
             length: firstDay,
           }).map((_, index) => (
-            <div key={`empty-${index}`} className="min-h-16 sm:min-h-20" />
+            <div key={`empty-${index}`} className="min-h-20" />
           ))}
 
           {dates.map((date) => {
@@ -219,6 +213,8 @@ export default function RoomReservationCalendar({
 
             const dailyPrice = priceMap.get(dateString);
 
+            const dailyStock = stockMap.get(dateString);
+
             const disabled = isPast || (unavailable && !isSelectingCheckOut);
 
             const dayOfWeek = date.getDay();
@@ -230,24 +226,19 @@ export default function RoomReservationCalendar({
                 disabled={disabled}
                 onClick={() => handleDateClick(date)}
                 className={[
-                  "relative flex min-w-0 min-h-16 flex-col items-center justify-center rounded-lg px-0 py-2 transition sm:rounded-xl sm:px-1 sm:min-h-20",
-
+                  "relative flex min-h-20 min-w-0 flex-col items-center justify-center rounded-lg px-0 py-2 transition sm:min-h-24 sm:rounded-xl sm:px-1",
                   disabled
                     ? "cursor-not-allowed bg-gray-50 text-gray-300"
                     : "hover:bg-gray-100",
-
                   selected ? "bg-black text-white hover:bg-black" : "",
                 ].join(" ")}
               >
-                {/* 날짜 */}
                 <span
                   className={[
                     "text-sm font-semibold",
-
                     !selected && !disabled && dayOfWeek === 0
                       ? "text-red-500"
                       : "",
-
                     !selected && !disabled && dayOfWeek === 6
                       ? "text-blue-500"
                       : "",
@@ -256,35 +247,41 @@ export default function RoomReservationCalendar({
                   {date.getDate()}
                 </span>
 
-                {/* 가격 */}
                 {unavailable ? (
-                  <span
-                    className={[
-                      "mt-1 max-w-full text-[9px] leading-tight [overflow-wrap:anywhere] sm:text-[10px]",
-
-                      selected ? "text-white" : "text-red-400",
-                    ].join(" ")}
-                  >
+                  <span className="mt-1 text-[9px] text-red-400 sm:text-[10px]">
                     예약마감
                   </span>
-                ) : dailyPrice ? (
-                  <span
-                    className={[
-                      "mt-1 max-w-full text-[9px] leading-tight [overflow-wrap:anywhere] sm:text-[10px]",
+                ) : (
+                  <>
+                    {dailyPrice && (
+                      <span
+                        className={[
+                          "mt-1 text-[9px] leading-tight sm:text-[10px]",
+                          selected ? "text-white" : "text-gray-500",
+                        ].join(" ")}
+                      >
+                        {formatPrice(dailyPrice.price)}
+                      </span>
+                    )}
 
-                      selected ? "text-white" : "text-gray-500",
-                    ].join(" ")}
-                  >
-                    {formatPrice(dailyPrice.price)}
-                  </span>
-                ) : null}
+                    {dailyStock && (
+                      <span
+                        className={[
+                          "mt-0.5 text-[8px] leading-tight sm:text-[9px]",
+                          selected ? "text-gray-200" : "text-gray-400",
+                        ].join(" ")}
+                      >
+                        잔여 {dailyStock.remainingCount}
+                      </span>
+                    )}
+                  </>
+                )}
               </button>
             );
           })}
         </div>
       )}
 
-      {/* 상태 안내 */}
       <div className="mt-5 flex flex-wrap gap-5 border-t pt-4 text-xs text-gray-500">
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded bg-black" />
@@ -297,7 +294,6 @@ export default function RoomReservationCalendar({
         </div>
       </div>
 
-      {/* 선택한 날짜 */}
       <div className="mt-5 rounded-xl bg-gray-50 p-4">
         {!checkIn && (
           <p className="text-sm text-gray-600">체크인 날짜를 선택해 주세요.</p>
@@ -316,19 +312,14 @@ export default function RoomReservationCalendar({
         )}
 
         {checkIn && checkOut && (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
             <div>
               <p className="text-xs text-gray-500">체크인</p>
 
               <p className="mt-1 text-sm font-bold">{checkIn}</p>
             </div>
 
-            <ArrowRight
-              size={20}
-              strokeWidth={2}
-              aria-hidden="true"
-              className="hidden text-gray-300 sm:block"
-            />
+            <ArrowRight size={20} className="hidden text-gray-300 sm:block" />
 
             <div className="sm:text-right">
               <p className="text-xs text-gray-500">체크아웃</p>

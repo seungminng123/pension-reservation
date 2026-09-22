@@ -135,6 +135,8 @@ export default function ReservationLookupPage() {
 
             <p>인원: {reservation.guestCount}명</p>
 
+            <p>수량: {reservation.quantity}개</p>
+
             <p>결제 예정 금액: {reservation.totalPrice.toLocaleString()}원</p>
 
             <p>예약금: {reservation.depositAmount.toLocaleString()}원</p>

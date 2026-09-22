@@ -4,6 +4,7 @@ import type {
   RoomAvailability,
   RoomAvailabilityCheck,
   RoomDetail,
+  RoomImageMeta,
   RoomListItem,
 } from "@/types/room";
 
@@ -45,6 +46,7 @@ export const checkRoomAvailability = async (
   roomId: number,
   checkIn: string,
   checkOut: string,
+  quantity = 1,
 ) => {
   const response = await api.get<RoomAvailabilityCheck>(
     `/api/v1/rooms/${roomId}/availability/check`,
@@ -52,6 +54,7 @@ export const checkRoomAvailability = async (
       params: {
         checkIn,
         checkOut,
+        quantity,
       },
     },
   );
@@ -59,9 +62,25 @@ export const checkRoomAvailability = async (
   return response.data;
 };
 
-// 객실 이미지 주소
+// 객실 이미지 목록 조회
+export const getRoomImages = async (roomId: number) => {
+  const response = await api.get<RoomImageMeta[]>(
+    `/api/v1/rooms/${roomId}/images`,
+  );
+
+  return response.data;
+};
+
+// 대표 이미지 주소
 export const getRoomImageUrl = (roomId: number) => {
   const baseUrl = String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "");
 
   return `${baseUrl}/api/v1/rooms/${roomId}/image`;
+};
+
+// 객실 이미지 주소
+export const getRoomImageDetailUrl = (roomId: number, imageId: number) => {
+  const baseUrl = String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "");
+
+  return `${baseUrl}/api/v1/rooms/${roomId}/images/${imageId}`;
 };

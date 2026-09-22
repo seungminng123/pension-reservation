@@ -116,6 +116,9 @@ export default function AdminReservationsPage() {
                 <p className="mt-1 text-sm text-gray-500">
                   {reservation.roomName}
                 </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {reservation.roomName} · {reservation.quantity}개
+                </p>
 
                 <p className="mt-1 text-sm text-gray-500">
                   {reservation.checkIn} ~ {reservation.checkOut}
@@ -185,6 +188,11 @@ export default function AdminReservationsPage() {
               <span className="text-gray-500">인원</span>
               <br />
               {selectedReservation.guestCount}명
+            </p>
+            <p>
+              <span className="text-gray-500">예약 수량</span>
+              <br />
+              {selectedReservation.quantity}개
             </p>
 
             <p>

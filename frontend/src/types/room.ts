@@ -5,6 +5,8 @@ export type RoomListItem = {
   price: number;
   maxGuests: number;
   guestCount: number;
+  stockCount: number;
+  saleEnabled: boolean;
   hasImage: boolean;
 };
 
@@ -16,6 +18,8 @@ export type RoomDetail = {
   price: number;
   maxGuests: number;
   guestCount: number;
+  stockCount: number;
+  saleEnabled: boolean;
   hasImage: boolean;
 };
 
@@ -25,15 +29,28 @@ export type RoomDailyPrice = {
   customPrice: boolean;
 };
 
+export type RoomDailyStock = {
+  date: string;
+  remainingCount: number;
+  soldOut: boolean;
+};
+
 export type RoomAvailability = {
   roomId: number;
   year: number;
   month: number;
   unavailableDates: string[];
   dailyPrices: RoomDailyPrice[];
+  dailyStocks: RoomDailyStock[];
 };
 
 export type RoomAvailabilityCheck = {
   available: boolean;
   totalPrice: number | null;
+  remainingCount: number;
+};
+
+export type RoomImageMeta = {
+  imageId: number;
+  displayOrder: number;
 };
