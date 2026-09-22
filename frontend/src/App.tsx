@@ -5,6 +5,7 @@ import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
 import AdminReservationsPage from "@/pages/admin/AdminReservationsPage";
+import AdminRoomPricingPage from "@/pages/admin/AdminRoomPricingPage";
 import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
 
 import HomePage from "@/pages/HomePage";
@@ -32,6 +33,11 @@ export default function App() {
           <Route path="reservations" element={<AdminReservationsPage />} />
 
           <Route path="rooms" element={<AdminRoomsPage />} />
+
+          <Route
+            path="rooms/:roomId/pricing"
+            element={<AdminRoomPricingPage />}
+          />
         </Route>
       </Route>
     </Routes>

@@ -49,3 +49,34 @@ export type AdminRoomCreateRequest = {
   guestCount: number;
   imageUrl: string;
 };
+export type AdminRoomUpdateRequest = {
+  type?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  maxGuests?: number;
+  guestCount?: number;
+  imageUrl?: string;
+};
+export type AdminRoomDailyPrice = {
+  date: string;
+  price: number;
+  customPrice: boolean;
+};
+
+export type AdminRoomMonthlyPrice = {
+  roomId: number;
+  year: number;
+  month: number;
+  defaultPrice: number;
+  prices: AdminRoomDailyPrice[];
+};
+
+export type AdminRoomPriceSetRequest = {
+  dates: string[];
+  price: number;
+};
+
+export type AdminRoomPriceResetRequest = {
+  dates: string[];
+};

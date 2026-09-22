@@ -17,7 +17,7 @@ public class RoomListResponse {
     @Schema(description = "객실명", example = "101호")
     private final String name;
 
-    @Schema(description = "1박 가격", example = "120000")
+    @Schema(description = "1박 기본 가격", example = "120000")
     private final Long price;
 
     @Schema(description = "최대 인원", example = "4")
@@ -26,11 +26,8 @@ public class RoomListResponse {
     @Schema(description = "기준 인원", example = "2")
     private final Integer guestCount;
 
-    @Schema(
-            description = "객실 대표 이미지 URL",
-            example = "https://example.com/room1.jpg"
-    )
-    private final String imageUrl;
+    @Schema(description = "객실 이미지 존재 여부", example = "true")
+    private final boolean hasImage;
 
     public RoomListResponse(Room room) {
         this.roomId = room.getRoomId();
@@ -39,6 +36,6 @@ public class RoomListResponse {
         this.price = room.getPrice();
         this.maxGuests = room.getMaxGuests();
         this.guestCount = room.getGuestCount();
-        this.imageUrl = room.getImageUrl();
+        this.hasImage = room.getImageData() != null;
     }
 }

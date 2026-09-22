@@ -28,7 +28,4 @@ public class RoomUpdateRequest {
     @Positive
     @Schema(example = "2")
     private Integer guestCount;
-
-    @Schema(example = "https://example.com/new-room.jpg")
-    private String imageUrl;
 }

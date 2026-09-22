@@ -7,6 +7,10 @@ import type {
   AdminReservationListItem,
   AdminRoom,
   AdminRoomCreateRequest,
+  AdminRoomUpdateRequest,
+  AdminRoomMonthlyPrice,
+  AdminRoomPriceResetRequest,
+  AdminRoomPriceSetRequest,
 } from "@/types/admin";
 import type {
   ReservationStatus,
@@ -73,4 +77,50 @@ export const createAdminRoom = async (request: AdminRoomCreateRequest) => {
   const response = await api.post<AdminRoom>("/api/v1/admin/rooms", request);
 
   return response.data;
+};
+export const updateAdminRoom = async (
+  roomId: number,
+  request: AdminRoomUpdateRequest,
+) => {
+  const response = await api.patch(`/api/v1/admin/rooms/${roomId}`, request);
+
+  return response.data;
+};
+export const getAdminRoomPrices = async (
+  roomId: number,
+  year: number,
+  month: number,
+) => {
+  const response = await api.get<AdminRoomMonthlyPrice>(
+    `/api/v1/admin/rooms/${roomId}/prices`,
+    {
+      params: {
+        year,
+        month,
+      },
+    },
+  );
+
+  return response.data;
+};
+
+export const setAdminRoomPrices = async (
+  roomId: number,
+  request: AdminRoomPriceSetRequest,
+) => {
+  const response = await api.put<AdminRoomMonthlyPrice>(
+    `/api/v1/admin/rooms/${roomId}/prices`,
+    request,
+  );
+
+  return response.data;
+};
+
+export const resetAdminRoomPrices = async (
+  roomId: number,
+  request: AdminRoomPriceResetRequest,
+) => {
+  await api.delete(`/api/v1/admin/rooms/${roomId}/prices`, {
+    data: request,
+  });
 };

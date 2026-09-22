@@ -1,11 +1,18 @@
 package com.pension.backend.room.controller;
 
-import com.pension.backend.room.dto.*;
+import com.pension.backend.room.dto.RoomAvailabilityCheckResponse;
+import com.pension.backend.room.dto.RoomAvailabilityResponse;
+import com.pension.backend.room.dto.RoomDetailResponse;
+import com.pension.backend.room.dto.RoomImageResponse;
+import com.pension.backend.room.dto.RoomListResponse;
 import com.pension.backend.room.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -34,9 +41,35 @@ public class RoomController {
         return roomService.getRoom(roomId);
     }
 
+    @Operation(summary = "객실 이미지 조회")
+    @GetMapping("/{roomId}/image")
+    public ResponseEntity<byte[]> getRoomImage(
+            @Parameter(example = "1")
+            @PathVariable Long roomId
+    ) {
+        RoomImageResponse image =
+                roomService.getRoomImage(
+                        roomId
+                );
+
+        return ResponseEntity
+                .ok()
+                .cacheControl(
+                        CacheControl.noStore()
+                )
+                .contentType(
+                        MediaType.parseMediaType(
+                                image.getContentType()
+                        )
+                )
+                .body(
+                        image.getData()
+                );
+    }
+
     @Operation(
             summary = "객실 예약 불가 날짜 조회",
-            description = "해당 연도와 월의 예약 불가 날짜를 조회합니다."
+            description = "해당 연도와 월의 예약 불가 날짜와 날짜별 가격을 조회합니다."
     )
     @GetMapping("/{roomId}/availability")
     public RoomAvailabilityResponse getAvailability(
@@ -58,7 +91,7 @@ public class RoomController {
 
     @Operation(
             summary = "객실 예약 가능 여부 확인",
-            description = "선택한 체크인/체크아웃 기간의 예약 가능 여부를 확인합니다."
+            description = "선택한 체크인/체크아웃 기간의 예약 가능 여부와 총 금액을 확인합니다."
     )
     @GetMapping("/{roomId}/availability/check")
     public RoomAvailabilityCheckResponse checkAvailability(

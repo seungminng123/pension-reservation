@@ -33,7 +33,12 @@ public class Room {
     @Column(nullable = false)
     private Integer guestCount;
 
-    private String imageUrl;
+    // 객실 이미지
+    @Lob
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] imageData;
+
+    private String imageContentType;
 
     public Room(
             String type,
@@ -41,8 +46,7 @@ public class Room {
             String description,
             Long price,
             Integer maxGuests,
-            Integer guestCount,
-            String imageUrl
+            Integer guestCount
     ) {
         this.type = type;
         this.name = name;
@@ -50,17 +54,16 @@ public class Room {
         this.price = price;
         this.maxGuests = maxGuests;
         this.guestCount = guestCount;
-        this.imageUrl = imageUrl;
     }
 
+    // 객실 수정
     public void update(
             String type,
             String name,
             String description,
             Long price,
             Integer maxGuests,
-            Integer guestCount,
-            String imageUrl
+            Integer guestCount
     ) {
         if (type != null) this.type = type;
         if (name != null) this.name = name;
@@ -68,6 +71,14 @@ public class Room {
         if (price != null) this.price = price;
         if (maxGuests != null) this.maxGuests = maxGuests;
         if (guestCount != null) this.guestCount = guestCount;
-        if (imageUrl != null) this.imageUrl = imageUrl;
+    }
+
+    // 이미지 수정
+    public void updateImage(
+            byte[] imageData,
+            String imageContentType
+    ) {
+        this.imageData = imageData;
+        this.imageContentType = imageContentType;
     }
 }

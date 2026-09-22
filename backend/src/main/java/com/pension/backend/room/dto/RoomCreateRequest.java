@@ -1,7 +1,9 @@
 package com.pension.backend.room.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 
 @Getter
@@ -33,7 +35,4 @@ public class RoomCreateRequest {
     @Positive
     @Schema(example = "2")
     private Integer guestCount;
-
-    @Schema(example = "https://example.com/room.jpg")
-    private String imageUrl;
 }
