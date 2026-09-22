@@ -74,6 +74,10 @@ public class Reservation {
     // 관리자 예약 확정 시간
     private LocalDateTime confirmedAt;
 
+    // 관리자 전용 메모
+    @Column(length = 500)
+    private String adminMemo;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
@@ -180,8 +184,15 @@ public class Reservation {
 
     // 예약 취소
     public void cancel() {
-
         status =
                 ReservationStatus.CANCELED;
+    }
+
+    // 관리자 메모 수정
+    public void updateAdminMemo(
+            String adminMemo
+    ) {
+        this.adminMemo =
+                adminMemo;
     }
 }

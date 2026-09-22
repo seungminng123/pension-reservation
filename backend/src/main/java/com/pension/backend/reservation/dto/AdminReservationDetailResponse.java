@@ -36,6 +36,9 @@ public class AdminReservationDetailResponse {
     private final PaymentMethod paymentMethod;
     private final LocalDateTime confirmedAt;
 
+    // 관리자 전용 메모
+    private final String adminMemo;
+
     private final LocalDateTime createdAt;
 
     public AdminReservationDetailResponse(
@@ -91,6 +94,9 @@ public class AdminReservationDetailResponse {
 
         this.confirmedAt =
                 reservation.getConfirmedAt();
+
+        this.adminMemo =
+                reservation.getAdminMemo();
 
         this.createdAt =
                 reservation.getCreatedAt();

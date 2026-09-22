@@ -19,7 +19,6 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -272,6 +271,33 @@ public class ReservationService {
         );
     }
 
+    // 관리자 메모 수정
+    @Transactional
+    public AdminReservationDetailResponse
+    updateAdminMemo(
+            Long reservationId,
+            String memo
+    ) {
+        Reservation reservation =
+                findReservation(
+                        reservationId
+                );
+
+        String normalizedMemo =
+                memo == null ||
+                        memo.trim().isEmpty()
+                        ? null
+                        : memo.trim();
+
+        reservation.updateAdminMemo(
+                normalizedMemo
+        );
+
+        return new AdminReservationDetailResponse(
+                reservation
+        );
+    }
+
     // 관리자 월별 예약 캘린더
     public List<AdminReservationCalendarDayResponse>
     getAdminReservationCalendar(
@@ -505,6 +531,7 @@ public class ReservationService {
         );
     }
 
+    // 상태별 예약 건수
     private int countStatus(
             List<Reservation> reservations,
             ReservationStatus status
@@ -581,6 +608,7 @@ public class ReservationService {
         return minimumRemaining;
     }
 
+    // 예약 조회
     private Reservation findReservation(
             Long reservationId
     ) {
@@ -596,6 +624,7 @@ public class ReservationService {
                 );
     }
 
+    // 날짜 검증
     private void validateDate(
             LocalDate checkIn,
             LocalDate checkOut
@@ -630,6 +659,7 @@ public class ReservationService {
         }
     }
 
+    // 예약번호 생성
     private String generateReservationNumber() {
 
         String timestamp =

@@ -4,6 +4,7 @@ import com.pension.backend.reservation.dto.AdminReservationCalendarDayResponse;
 import com.pension.backend.reservation.dto.AdminReservationCalendarItemResponse;
 import com.pension.backend.reservation.dto.AdminReservationDetailResponse;
 import com.pension.backend.reservation.dto.AdminReservationListResponse;
+import com.pension.backend.reservation.dto.AdminReservationMemoRequest;
 import com.pension.backend.reservation.dto.ReservationConfirmRequest;
 import com.pension.backend.reservation.dto.ReservationStatusResponse;
 import com.pension.backend.reservation.entity.ReservationStatus;
@@ -34,7 +35,8 @@ import java.util.List;
 )
 public class AdminReservationController {
 
-    private final ReservationService reservationService;
+    private final ReservationService
+            reservationService;
 
     // 예약 목록 조회
     @Operation(
@@ -62,11 +64,15 @@ public class AdminReservationController {
     @GetMapping("/calendar")
     public List<AdminReservationCalendarDayResponse>
     getReservationCalendar(
-            @Parameter(example = "2026")
+            @Parameter(
+                    example = "2026"
+            )
             @RequestParam
             int year,
 
-            @Parameter(example = "9")
+            @Parameter(
+                    example = "9"
+            )
             @RequestParam
             int month
     ) {
@@ -103,7 +109,9 @@ public class AdminReservationController {
     @Operation(
             summary = "예약 상세 조회"
     )
-    @GetMapping("/{reservationId}")
+    @GetMapping(
+            "/{reservationId}"
+    )
     public AdminReservationDetailResponse
     getReservation(
             @PathVariable
@@ -112,6 +120,30 @@ public class AdminReservationController {
         return reservationService
                 .getAdminReservation(
                         reservationId
+                );
+    }
+
+    // 관리자 메모 수정
+    @Operation(
+            summary = "관리자 예약 메모 수정",
+            description = "관리자만 확인할 수 있는 예약 메모를 저장하거나 수정합니다."
+    )
+    @PatchMapping(
+            "/{reservationId}/memo"
+    )
+    public AdminReservationDetailResponse
+    updateReservationMemo(
+            @PathVariable
+            Long reservationId,
+
+            @Valid
+            @RequestBody
+            AdminReservationMemoRequest request
+    ) {
+        return reservationService
+                .updateAdminMemo(
+                        reservationId,
+                        request.getMemo()
                 );
     }
 
