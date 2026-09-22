@@ -5,7 +5,7 @@ export type RoomListItem = {
   price: number;
   maxGuests: number;
   guestCount: number;
-  imageUrl: string | null;
+  hasImage: boolean;
 };
 
 export type RoomDetail = {
@@ -16,7 +16,13 @@ export type RoomDetail = {
   price: number;
   maxGuests: number;
   guestCount: number;
-  imageUrl: string | null;
+  hasImage: boolean;
+};
+
+export type RoomDailyPrice = {
+  date: string;
+  price: number;
+  customPrice: boolean;
 };
 
 export type RoomAvailability = {
@@ -24,8 +30,10 @@ export type RoomAvailability = {
   year: number;
   month: number;
   unavailableDates: string[];
+  dailyPrices: RoomDailyPrice[];
 };
 
 export type RoomAvailabilityCheck = {
   available: boolean;
+  totalPrice: number | null;
 };

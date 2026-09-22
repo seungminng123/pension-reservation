@@ -1,3 +1,10 @@
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
@@ -201,8 +208,11 @@ export default function AdminRoomPricingPage() {
 
   return (
     <div>
-      <Link to="/admin/rooms" className="text-sm text-gray-500">
-        ← 객실 관리
+      <Link
+        to="/admin/rooms"
+        className="inline-flex min-h-11 items-center gap-2 text-sm text-gray-500"
+      >
+        <ArrowLeft size={20} strokeWidth={2} aria-hidden="true" /> 객실 관리
       </Link>
 
       <div className="mt-5">
@@ -227,14 +237,15 @@ export default function AdminRoomPricingPage() {
       </section>
 
       {/* 요금 달력 */}
-      <section className="mt-6 rounded-2xl border bg-white p-5 sm:p-6">
+      <section className="mt-6 rounded-2xl border bg-white p-2 sm:p-6">
         <div className="flex items-center justify-between">
           <button
             type="button"
+            aria-label="이전 달"
             onClick={handlePreviousMonth}
-            className="flex h-10 w-10 items-center justify-center rounded-full border"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border"
           >
-            ‹
+            <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
           </button>
 
           <h3 className="font-bold">
@@ -243,10 +254,11 @@ export default function AdminRoomPricingPage() {
 
           <button
             type="button"
+            aria-label="다음 달"
             onClick={handleNextMonth}
-            className="flex h-10 w-10 items-center justify-center rounded-full border"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border"
           >
-            ›
+            <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
 
@@ -265,7 +277,7 @@ export default function AdminRoomPricingPage() {
             요금을 불러오는 중입니다.
           </div>
         ) : (
-          <div className="mt-2 grid grid-cols-7 gap-1">
+          <div className="mt-2 grid grid-cols-7 gap-0.5 sm:gap-1">
             {Array.from({
               length: firstDay,
             }).map((_, index) => (
@@ -285,7 +297,7 @@ export default function AdminRoomPricingPage() {
                   type="button"
                   onClick={() => handleDateClick(dateString)}
                   className={[
-                    "relative flex min-h-20 flex-col items-center justify-center rounded-xl border text-center transition",
+                    "relative flex min-w-0 min-h-20 py-2 flex-col items-center justify-center rounded-xl border text-center transition",
 
                     selected
                       ? "border-black bg-black text-white"
@@ -298,7 +310,7 @@ export default function AdminRoomPricingPage() {
 
                   <span
                     className={[
-                      "mt-1 text-[10px] font-medium sm:text-xs",
+                      "mt-1 max-w-full text-[9px] leading-tight font-medium [overflow-wrap:anywhere] sm:text-xs",
 
                       selected
                         ? "text-white"
@@ -307,7 +319,14 @@ export default function AdminRoomPricingPage() {
                           : "text-gray-500",
                     ].join(" ")}
                   >
-                    {(priceInfo?.price ?? room.price).toLocaleString()}원
+                    <span className="sm:hidden">
+                      {(priceInfo?.price ?? room.price) >= 10000
+                        ? `${((priceInfo?.price ?? room.price) / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 4 })}만`
+                        : `${(priceInfo?.price ?? room.price).toLocaleString()}원`}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {(priceInfo?.price ?? room.price).toLocaleString()}원
+                    </span>
                   </span>
 
                   {priceInfo?.customPrice && !selected && (
@@ -321,7 +340,7 @@ export default function AdminRoomPricingPage() {
           </div>
         )}
 
-        <div className="mt-5 flex gap-5 border-t pt-4 text-xs text-gray-500">
+        <div className="mt-5 flex flex-wrap gap-3 sm:gap-5 border-t pt-4 text-xs text-gray-500">
           <div className="flex items-center gap-2">
             <span className="h-3 w-3 rounded bg-black" />
             선택 날짜
@@ -336,8 +355,8 @@ export default function AdminRoomPricingPage() {
 
       {/* 선택 가격 설정 */}
       {selectedDates.length > 0 && (
-        <section className="sticky bottom-5 mt-6 rounded-2xl border bg-white p-5 shadow-lg">
-          <div className="flex items-start justify-between">
+        <section className="mt-6 rounded-2xl border bg-white p-4 shadow-lg sm:sticky sm:bottom-5 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className="font-bold">선택한 날짜</h3>
 
@@ -355,9 +374,9 @@ export default function AdminRoomPricingPage() {
             <button
               type="button"
               onClick={clearSelection}
-              className="text-sm text-gray-500"
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-gray-500"
             >
-              선택 해제
+              <X size={20} strokeWidth={2} aria-hidden="true" /> 선택 해제
             </button>
           </div>
 
@@ -370,7 +389,7 @@ export default function AdminRoomPricingPage() {
                 value={price}
                 onChange={(event) => setPrice(event.target.value)}
                 placeholder="예: 250000"
-                className="w-full rounded-xl border px-4 py-4 pr-12 outline-none focus:border-black"
+                className="min-w-0 w-full rounded-xl border px-4 py-4 pr-12 outline-none focus:border-black"
               />
 
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
@@ -379,21 +398,22 @@ export default function AdminRoomPricingPage() {
             </div>
           </div>
 
-          <div className="mt-5 flex gap-3">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={handleResetPrice}
               disabled={resetPriceMutation.isPending}
-              className="flex-1 rounded-xl border py-3 text-sm font-medium"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 border py-3 text-sm font-medium"
             >
-              기본 가격으로 되돌리기
+              <RotateCcw size={20} strokeWidth={2} aria-hidden="true" /> 기본
+              가격으로 되돌리기
             </button>
 
             <button
               type="button"
               onClick={handleApplyPrice}
               disabled={setPriceMutation.isPending}
-              className="flex-1 rounded-xl bg-black py-3 text-sm font-bold text-white disabled:opacity-50"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 bg-black py-3 text-sm font-bold text-white disabled:opacity-50"
             >
               {setPriceMutation.isPending ? "저장 중..." : "선택 날짜에 적용"}
             </button>

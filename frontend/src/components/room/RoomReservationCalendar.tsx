@@ -1,3 +1,4 @@
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -30,9 +31,7 @@ const formatPrice = (price: number) => {
   if (price >= 10000) {
     const tenThousands = price / 10000;
 
-    if (Number.isInteger(tenThousands)) {
-      return `${tenThousands.toLocaleString()}만`;
-    }
+    return `${tenThousands.toLocaleString("ko-KR", { maximumFractionDigits: 4 })}만`;
   }
 
   return `${price.toLocaleString()}원`;
@@ -152,17 +151,17 @@ export default function RoomReservationCalendar({
   };
 
   return (
-    <div className="rounded-2xl border bg-white p-4 sm:p-6">
+    <div className="rounded-2xl border min-w-0 bg-white p-2 sm:p-6">
       {/* 월 이동 */}
       <div className="flex items-center justify-between">
         <button
           type="button"
           disabled={isCurrentMonth}
           onClick={handlePreviousMonth}
-          className="flex h-10 w-10 items-center justify-center rounded-full border text-xl disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xl disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="이전 달"
         >
-          ‹
+          <ChevronLeft size={20} strokeWidth={2} aria-hidden="true" />
         </button>
 
         <h3 className="font-bold">
@@ -172,10 +171,10 @@ export default function RoomReservationCalendar({
         <button
           type="button"
           onClick={handleNextMonth}
-          className="flex h-10 w-10 items-center justify-center rounded-full border text-xl"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xl"
           aria-label="다음 달"
         >
-          ›
+          <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />
         </button>
       </div>
 
@@ -201,7 +200,7 @@ export default function RoomReservationCalendar({
           예약 정보를 불러오지 못했습니다.
         </div>
       ) : (
-        <div className="mt-2 grid grid-cols-7 gap-1">
+        <div className="mt-2 grid grid-cols-7 gap-0.5 sm:gap-1">
           {/* 빈 날짜 */}
           {Array.from({
             length: firstDay,
@@ -231,7 +230,7 @@ export default function RoomReservationCalendar({
                 disabled={disabled}
                 onClick={() => handleDateClick(date)}
                 className={[
-                  "relative flex min-h-16 flex-col items-center justify-center rounded-xl px-1 transition sm:min-h-20",
+                  "relative flex min-w-0 min-h-16 flex-col items-center justify-center rounded-lg px-0 py-2 transition sm:rounded-xl sm:px-1 sm:min-h-20",
 
                   disabled
                     ? "cursor-not-allowed bg-gray-50 text-gray-300"
@@ -261,7 +260,7 @@ export default function RoomReservationCalendar({
                 {unavailable ? (
                   <span
                     className={[
-                      "mt-1 text-[9px] sm:text-[10px]",
+                      "mt-1 max-w-full text-[9px] leading-tight [overflow-wrap:anywhere] sm:text-[10px]",
 
                       selected ? "text-white" : "text-red-400",
                     ].join(" ")}
@@ -271,7 +270,7 @@ export default function RoomReservationCalendar({
                 ) : dailyPrice ? (
                   <span
                     className={[
-                      "mt-1 text-[9px] sm:text-[10px]",
+                      "mt-1 max-w-full text-[9px] leading-tight [overflow-wrap:anywhere] sm:text-[10px]",
 
                       selected ? "text-white" : "text-gray-500",
                     ].join(" ")}
@@ -317,16 +316,21 @@ export default function RoomReservationCalendar({
         )}
 
         {checkIn && checkOut && (
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-3">
             <div>
               <p className="text-xs text-gray-500">체크인</p>
 
               <p className="mt-1 text-sm font-bold">{checkIn}</p>
             </div>
 
-            <span className="text-gray-300">→</span>
+            <ArrowRight
+              size={20}
+              strokeWidth={2}
+              aria-hidden="true"
+              className="hidden text-gray-300 sm:block"
+            />
 
-            <div className="text-right">
+            <div className="sm:text-right">
               <p className="text-xs text-gray-500">체크아웃</p>
 
               <p className="mt-1 text-sm font-bold">{checkOut}</p>

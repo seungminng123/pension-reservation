@@ -1,3 +1,4 @@
+import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -68,7 +69,7 @@ export default function AdminReservationsPage() {
 
   return (
     <div>
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold">예약 관리</h2>
 
@@ -82,7 +83,7 @@ export default function AdminReservationsPage() {
           onChange={(event) =>
             setStatus(event.target.value as ReservationStatus | "ALL")
           }
-          className="rounded-lg border bg-white px-4 py-2"
+          className="min-h-11 w-full min-w-0 rounded-lg border bg-white px-4 py-2 sm:w-auto sm:shrink-0"
         >
           <option value="ALL">전체 예약</option>
 
@@ -107,7 +108,7 @@ export default function AdminReservationsPage() {
               key={reservation.reservationId}
               type="button"
               onClick={() => setSelectedId(reservation.reservationId)}
-              className="flex w-full items-center justify-between border-b p-5 text-left last:border-b-0 hover:bg-gray-50"
+              className="flex w-full min-w-0 flex-col items-start justify-between gap-3 border-b p-4 sm:flex-row sm:items-center sm:p-5 text-left last:border-b-0 hover:bg-gray-50"
             >
               <div>
                 <p className="font-semibold">{reservation.guestName}</p>
@@ -121,7 +122,7 @@ export default function AdminReservationsPage() {
                 </p>
               </div>
 
-              <div className="text-right">
+              <div className="min-w-0 text-left sm:text-right">
                 <p className="text-sm font-medium">
                   {statusLabels[reservation.status]}
                 </p>
@@ -136,16 +137,16 @@ export default function AdminReservationsPage() {
       </div>
 
       {selectedReservation && (
-        <section className="mt-8 rounded-2xl border bg-white p-6">
+        <section className="mt-8 rounded-2xl border bg-white p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold">예약 상세</h3>
 
             <button
               type="button"
               onClick={() => setSelectedId(null)}
-              className="text-sm text-gray-500"
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-gray-500"
             >
-              닫기
+              <X size={20} strokeWidth={2} aria-hidden="true" /> 닫기
             </button>
           </div>
 
@@ -211,16 +212,17 @@ export default function AdminReservationsPage() {
             </p>
           </div>
 
-          <div className="mt-8 flex gap-3">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             {selectedReservation.status === "PENDING" && (
               <button
                 type="button"
                 onClick={() =>
                   confirmMutation.mutate(selectedReservation.reservationId)
                 }
-                className="flex-1 rounded-xl bg-black py-3 text-white"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-black py-3 text-white"
               >
-                입금 확인 · 예약 확정
+                <Check size={20} strokeWidth={2} aria-hidden="true" /> 입금 확인
+                · 예약 확정
               </button>
             )}
 
@@ -230,9 +232,9 @@ export default function AdminReservationsPage() {
                 onClick={() =>
                   cancelMutation.mutate(selectedReservation.reservationId)
                 }
-                className="flex-1 rounded-xl border border-red-500 py-3 text-red-500"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500 py-3 text-red-500"
               >
-                예약 취소
+                <X size={20} strokeWidth={2} aria-hidden="true" /> 예약 취소
               </button>
             )}
           </div>

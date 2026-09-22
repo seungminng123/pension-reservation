@@ -1,7 +1,8 @@
+import { CalendarDays } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { getRooms } from "@/api/room";
+import { getRoomImageUrl, getRooms } from "@/api/room";
 
 export default function HomePage() {
   const {
@@ -30,10 +31,11 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-5 py-10">
-      <div className="mb-10 flex items-center justify-between">
+    <main className="mx-auto min-h-screen max-w-5xl px-4 py-6 sm:px-5 sm:py-10">
+      <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:mb-10 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold">펜션 예약</h1>
+
           <p className="mt-2 text-gray-500">
             원하는 객실과 날짜를 선택해 주세요.
           </p>
@@ -41,9 +43,10 @@ export default function HomePage() {
 
         <Link
           to="/reservation/lookup"
-          className="rounded-lg border px-4 py-2 text-sm"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm"
         >
-          예약 조회
+          <CalendarDays size={20} strokeWidth={2} aria-hidden="true" /> 예약
+          조회
         </Link>
       </div>
 
@@ -57,16 +60,16 @@ export default function HomePage() {
             <Link
               key={room.roomId}
               to={`/rooms/${room.roomId}`}
-              className="overflow-hidden rounded-2xl border bg-white transition hover:shadow-lg"
+              className="min-w-0 overflow-hidden rounded-2xl border bg-white transition hover:shadow-lg"
             >
-              {room.imageUrl ? (
+              {room.hasImage ? (
                 <img
-                  src={room.imageUrl}
+                  src={getRoomImageUrl(room.roomId)}
                   alt={room.name}
-                  className="h-60 w-full object-cover"
+                  className="aspect-[4/3] w-full object-cover sm:aspect-auto sm:h-60"
                 />
               ) : (
-                <div className="flex h-60 items-center justify-center bg-gray-100 text-gray-400">
+                <div className="flex aspect-[4/3] items-center sm:aspect-auto sm:h-60 justify-center bg-gray-100 text-gray-400">
                   이미지 없음
                 </div>
               )}
@@ -76,7 +79,7 @@ export default function HomePage() {
 
                 <h2 className="mt-1 text-xl font-bold">{room.name}</h2>
 
-                <div className="mt-4 flex items-end justify-between">
+                <div className="mt-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                   <p className="text-sm text-gray-500">
                     기준 {room.guestCount}명 · 최대 {room.maxGuests}명
                   </p>

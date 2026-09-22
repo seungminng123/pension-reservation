@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -39,9 +40,12 @@ export default function ReservationLookupPage() {
   const reservation = lookupMutation.data;
 
   return (
-    <main className="mx-auto max-w-xl px-5 py-12">
-      <Link to="/" className="text-sm text-gray-500">
-        ← 홈
+    <main className="mx-auto max-w-xl px-4 py-8 sm:px-5 sm:py-12">
+      <Link
+        to="/"
+        className="inline-flex min-h-11 items-center gap-2 text-sm text-gray-500"
+      >
+        <ArrowLeft size={20} strokeWidth={2} aria-hidden="true" /> 홈
       </Link>
 
       <h1 className="mt-6 text-3xl font-bold">예약 조회</h1>
@@ -55,14 +59,14 @@ export default function ReservationLookupPage() {
           value={reservationNumber}
           onChange={(event) => setReservationNumber(event.target.value)}
           placeholder="예약번호"
-          className="w-full rounded-lg border p-3"
+          className="min-w-0 w-full rounded-lg border p-3"
         />
 
         <input
           value={phoneNumber}
           onChange={(event) => setPhoneNumber(event.target.value)}
           placeholder="전화번호"
-          className="w-full rounded-lg border p-3"
+          className="min-w-0 w-full rounded-lg border p-3"
         />
 
         <button
@@ -81,7 +85,7 @@ export default function ReservationLookupPage() {
       )}
 
       {reservation && (
-        <section className="mt-8 rounded-2xl border p-6">
+        <section className="mt-8 rounded-2xl border p-4 sm:p-6">
           <h2 className="text-xl font-bold">예약 정보</h2>
 
           <div className="mt-5 space-y-3">

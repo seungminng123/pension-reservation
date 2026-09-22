@@ -47,17 +47,17 @@ export type AdminRoomCreateRequest = {
   price: number;
   maxGuests: number;
   guestCount: number;
-  imageUrl: string;
 };
+
 export type AdminRoomUpdateRequest = {
-  type?: string;
-  name?: string;
-  description?: string;
-  price?: number;
-  maxGuests?: number;
-  guestCount?: number;
-  imageUrl?: string;
+  type: string;
+  name: string;
+  description: string;
+  price: number;
+  maxGuests: number;
+  guestCount: number;
 };
+
 export type AdminRoomDailyPrice = {
   date: string;
   price: number;

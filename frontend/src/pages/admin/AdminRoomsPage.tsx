@@ -1,9 +1,15 @@
+import { ImagePlus, Pencil, WalletCards } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { createAdminRoom, getAdminRooms, updateAdminRoom } from "@/api/admin";
-import { getRoom } from "@/api/room";
+import {
+  createAdminRoom,
+  getAdminRooms,
+  updateAdminRoom,
+  uploadAdminRoomImage,
+} from "@/api/admin";
+import { getRoom, getRoomImageUrl } from "@/api/room";
 
 const initialForm = {
   type: "",
@@ -12,7 +18,6 @@ const initialForm = {
   price: "",
   maxGuests: "",
   guestCount: "",
-  imageUrl: "",
 };
 
 export default function AdminRoomsPage() {
@@ -22,6 +27,10 @@ export default function AdminRoomsPage() {
 
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
 
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const [fileInputKey, setFileInputKey] = useState(0);
+
   const { data: rooms, isLoading } = useQuery({
     queryKey: ["adminRooms"],
     queryFn: getAdminRooms,
@@ -30,11 +39,35 @@ export default function AdminRoomsPage() {
   const resetForm = () => {
     setForm(initialForm);
     setEditingRoomId(null);
+    setImageFile(null);
+
+    setFileInputKey((current) => current + 1);
   };
 
   // 객실 등록
   const createMutation = useMutation({
-    mutationFn: createAdminRoom,
+    mutationFn: async ({
+      request,
+      file,
+    }: {
+      request: {
+        type: string;
+        name: string;
+        description: string;
+        price: number;
+        maxGuests: number;
+        guestCount: number;
+      };
+      file: File | null;
+    }) => {
+      const room = await createAdminRoom(request);
+
+      if (file) {
+        await uploadAdminRoomImage(room.roomId, file);
+      }
+
+      return room;
+    },
 
     onSuccess: async () => {
       resetForm();
@@ -51,9 +84,10 @@ export default function AdminRoomsPage() {
 
   // 객실 수정
   const updateMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       roomId,
       request,
+      file,
     }: {
       roomId: number;
       request: {
@@ -63,9 +97,17 @@ export default function AdminRoomsPage() {
         price: number;
         maxGuests: number;
         guestCount: number;
-        imageUrl: string;
       };
-    }) => updateAdminRoom(roomId, request),
+      file: File | null;
+    }) => {
+      const room = await updateAdminRoom(roomId, request);
+
+      if (file) {
+        await uploadAdminRoomImage(roomId, file);
+      }
+
+      return room;
+    },
 
     onSuccess: async (_, variables) => {
       resetForm();
@@ -84,7 +126,7 @@ export default function AdminRoomsPage() {
     },
   });
 
-  // 수정할 객실 상세 조회
+  // 객실 상세 조회
   const roomDetailMutation = useMutation({
     mutationFn: getRoom,
 
@@ -98,8 +140,11 @@ export default function AdminRoomsPage() {
         price: String(room.price),
         maxGuests: String(room.maxGuests),
         guestCount: String(room.guestCount),
-        imageUrl: room.imageUrl ?? "",
       });
+
+      setImageFile(null);
+
+      setFileInputKey((current) => current + 1);
 
       window.scrollTo({
         top: 0,
@@ -112,6 +157,7 @@ export default function AdminRoomsPage() {
     roomDetailMutation.mutate(roomId);
   };
 
+  // 객실 저장
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -123,6 +169,19 @@ export default function AdminRoomsPage() {
       !form.maxGuests
     ) {
       alert("필수 정보를 입력해 주세요.");
+
+      return;
+    }
+
+    if (Number(form.guestCount) > Number(form.maxGuests)) {
+      alert("기준 인원은 최대 인원보다 클 수 없습니다.");
+
+      return;
+    }
+
+    if (imageFile && imageFile.size > 10 * 1024 * 1024) {
+      alert("이미지는 10MB 이하만 업로드할 수 있습니다.");
+
       return;
     }
 
@@ -133,19 +192,22 @@ export default function AdminRoomsPage() {
       price: Number(form.price),
       maxGuests: Number(form.maxGuests),
       guestCount: Number(form.guestCount),
-      imageUrl: form.imageUrl,
     };
 
     if (editingRoomId !== null) {
       updateMutation.mutate({
         roomId: editingRoomId,
         request,
+        file: imageFile,
       });
 
       return;
     }
 
-    createMutation.mutate(request);
+    createMutation.mutate({
+      request,
+      file: imageFile,
+    });
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -159,8 +221,8 @@ export default function AdminRoomsPage() {
       </p>
 
       {/* 객실 등록 / 수정 */}
-      <section className="mt-8 rounded-2xl border bg-white p-6">
-        <div className="flex items-center justify-between">
+      <section className="mt-8 rounded-2xl border bg-white p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-bold">
             {editingRoomId !== null ? "객실 수정" : "새 객실 등록"}
           </h3>
@@ -178,7 +240,7 @@ export default function AdminRoomsPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="mt-6 grid gap-4 sm:grid-cols-2"
+          className="mt-6 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2"
         >
           <input
             placeholder="객실 타입"
@@ -189,7 +251,7 @@ export default function AdminRoomsPage() {
                 type: event.target.value,
               })
             }
-            className="rounded-lg border p-3"
+            className="min-w-0 w-full rounded-lg border p-3"
           />
 
           <input
@@ -201,7 +263,7 @@ export default function AdminRoomsPage() {
                 name: event.target.value,
               })
             }
-            className="rounded-lg border p-3"
+            className="min-w-0 w-full rounded-lg border p-3"
           />
 
           <input
@@ -215,7 +277,7 @@ export default function AdminRoomsPage() {
                 price: event.target.value,
               })
             }
-            className="rounded-lg border p-3"
+            className="min-w-0 w-full rounded-lg border p-3"
           />
 
           <input
@@ -229,7 +291,7 @@ export default function AdminRoomsPage() {
                 guestCount: event.target.value,
               })
             }
-            className="rounded-lg border p-3"
+            className="min-w-0 w-full rounded-lg border p-3"
           />
 
           <input
@@ -243,20 +305,43 @@ export default function AdminRoomsPage() {
                 maxGuests: event.target.value,
               })
             }
-            className="rounded-lg border p-3"
+            className="min-w-0 w-full rounded-lg border p-3"
           />
 
-          <input
-            placeholder="이미지 URL"
-            value={form.imageUrl}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                imageUrl: event.target.value,
-              })
-            }
-            className="rounded-lg border p-3"
-          />
+          {/* 객실 이미지 */}
+          <div className="min-w-0">
+            <label
+              htmlFor="room-image"
+              className="mb-2 flex items-center gap-2 text-sm font-medium"
+            >
+              <ImagePlus size={20} strokeWidth={2} aria-hidden="true" /> 객실
+              사진 선택
+            </label>
+            <input
+              id="room-image"
+              key={fileInputKey}
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+
+                setImageFile(file);
+              }}
+              className="min-w-0 w-full max-w-full rounded-lg border p-3 text-sm file:mr-2 file:rounded-md file:bg-gray-100 file:px-2 file:py-2"
+            />
+
+            {imageFile && (
+              <p className="mt-2 truncate text-xs text-gray-500">
+                {imageFile.name}
+              </p>
+            )}
+
+            {editingRoomId !== null && !imageFile && (
+              <p className="mt-2 text-xs text-gray-400">
+                새 이미지를 선택하지 않으면 기존 이미지가 유지됩니다.
+              </p>
+            )}
+          </div>
 
           <textarea
             placeholder="객실 설명"
@@ -267,7 +352,7 @@ export default function AdminRoomsPage() {
                 description: event.target.value,
               })
             }
-            className="min-h-28 rounded-lg border p-3 sm:col-span-2"
+            className="min-h-28 min-w-0 w-full rounded-lg border p-3 sm:col-span-2"
           />
 
           {(createMutation.isError || updateMutation.isError) && (
@@ -301,15 +386,15 @@ export default function AdminRoomsPage() {
             등록된 객실이 없습니다.
           </div>
         ) : (
-          <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
             {rooms.map((room) => (
               <article
                 key={room.roomId}
-                className="overflow-hidden rounded-2xl border bg-white"
+                className="min-w-0 overflow-hidden rounded-2xl border bg-white"
               >
-                {room.imageUrl ? (
+                {room.hasImage ? (
                   <img
-                    src={room.imageUrl}
+                    src={getRoomImageUrl(room.roomId)}
                     alt={room.name}
                     className="h-48 w-full object-cover"
                   />
@@ -320,13 +405,9 @@ export default function AdminRoomsPage() {
                 )}
 
                 <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">{room.type}</p>
+                  <p className="text-sm text-gray-500">{room.type}</p>
 
-                      <h4 className="mt-1 text-lg font-bold">{room.name}</h4>
-                    </div>
-                  </div>
+                  <h4 className="mt-1 text-lg font-bold">{room.name}</h4>
 
                   <p className="mt-3 font-semibold">
                     {room.price.toLocaleString()}원 / 박
@@ -336,20 +417,26 @@ export default function AdminRoomsPage() {
                     기준 {room.guestCount}명 · 최대 {room.maxGuests}명
                   </p>
 
-                  <div className="mt-5 flex gap-2">
+                  <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
                       onClick={() => handleEdit(room.roomId)}
                       disabled={roomDetailMutation.isPending}
-                      className="flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
                     >
+                      <Pencil size={20} strokeWidth={2} aria-hidden="true" />{" "}
                       객실 정보 수정
                     </button>
 
                     <Link
                       to={`/admin/rooms/${room.roomId}/pricing`}
-                      className="flex flex-1 items-center justify-center rounded-lg bg-black px-3 py-2.5 text-sm font-medium text-white"
+                      className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-black px-3 py-2.5 text-sm font-medium text-white"
                     >
+                      <WalletCards
+                        size={20}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />{" "}
                       요금 관리
                     </Link>
                   </div>

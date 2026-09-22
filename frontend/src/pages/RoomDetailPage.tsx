@@ -1,8 +1,9 @@
+import { ArrowLeft, ArrowRight, Check, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
-import { checkRoomAvailability, getRoom } from "@/api/room";
+import { checkRoomAvailability, getRoom, getRoomImageUrl } from "@/api/room";
 import { createReservation } from "@/api/reservation";
 
 import RoomReservationCalendar from "@/components/room/RoomReservationCalendar";
@@ -94,7 +95,7 @@ export default function RoomDetailPage() {
         )
       : 0;
 
-  // 날짜별 가격이 적용된 총 금액
+  // 총 금액
   const totalPrice =
     available === true ? (availabilityMutation.data?.totalPrice ?? 0) : 0;
 
@@ -112,26 +113,31 @@ export default function RoomDetailPage() {
   const handleReservation = () => {
     if (!checkIn || !checkOut) {
       alert("체크인과 체크아웃 날짜를 선택해 주세요.");
+
       return;
     }
 
     if (available !== true) {
       alert("예약 가능한 일정인지 확인해 주세요.");
+
       return;
     }
 
     if (!guestName.trim()) {
       alert("예약자 이름을 입력해 주세요.");
+
       return;
     }
 
     if (!phoneNumber.trim()) {
       alert("전화번호를 입력해 주세요.");
+
       return;
     }
 
     if (!depositorName.trim()) {
       alert("입금자명을 입력해 주세요.");
+
       return;
     }
 
@@ -151,10 +157,10 @@ export default function RoomDetailPage() {
   // 예약 완료
   if (reservation) {
     return (
-      <main className="mx-auto min-h-screen max-w-xl px-5 py-14">
-        <div className="rounded-3xl border bg-white p-7">
+      <main className="mx-auto min-h-screen max-w-xl px-4 py-8 sm:px-5 sm:py-14">
+        <div className="rounded-3xl border bg-white p-4 sm:p-7">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-2xl">
-            ✓
+            <Check size={20} strokeWidth={2} aria-hidden="true" />
           </div>
 
           <h1 className="mt-6 text-2xl font-bold">
@@ -167,34 +173,34 @@ export default function RoomDetailPage() {
 
           <div className="mt-8 rounded-2xl bg-gray-50 p-5">
             <div className="space-y-4 text-sm">
-              <div className="flex justify-between gap-5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-5">
                 <span className="text-gray-500">예약번호</span>
 
                 <strong>{reservation.reservationNumber}</strong>
               </div>
 
-              <div className="flex justify-between gap-5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-5">
                 <span className="text-gray-500">객실</span>
 
                 <strong>{reservation.roomName}</strong>
               </div>
 
-              <div className="flex justify-between gap-5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-5">
                 <span className="text-gray-500">일정</span>
 
-                <strong className="text-right">
+                <strong className="sm:text-right">
                   {reservation.checkIn}
                   <br />~ {reservation.checkOut}
                 </strong>
               </div>
 
-              <div className="flex justify-between gap-5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-5">
                 <span className="text-gray-500">총 금액</span>
 
                 <strong>{reservation.totalPrice.toLocaleString()}원</strong>
               </div>
 
-              <div className="flex justify-between gap-5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-5">
                 <span className="text-gray-500">예약금</span>
 
                 <strong>{reservation.depositAmount.toLocaleString()}원</strong>
@@ -225,40 +231,40 @@ export default function RoomDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-28">
+    <div className="min-h-screen bg-white pb-[calc(13rem+env(safe-area-inset-bottom))] sm:pb-28">
       {/* 객실 사진 */}
       <section className="mx-auto max-w-4xl">
         <div className="relative">
-          {room.imageUrl ? (
+          {room.hasImage ? (
             <img
-              src={room.imageUrl}
+              src={getRoomImageUrl(room.roomId)}
               alt={room.name}
-              className="h-80 w-full object-cover sm:h-[460px] sm:rounded-b-3xl"
+              className="aspect-[4/3] w-full object-cover sm:aspect-auto sm:h-[460px] sm:rounded-b-3xl"
             />
           ) : (
-            <div className="flex h-80 items-center justify-center bg-gray-100 text-gray-400 sm:h-[460px]">
+            <div className="flex aspect-[4/3] items-center sm:aspect-auto justify-center bg-gray-100 text-gray-400 sm:h-[460px]">
               이미지가 없습니다.
             </div>
           )}
 
           <Link
             to="/"
-            className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow"
+            className="absolute left-4 top-4 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/90 shadow"
             aria-label="뒤로가기"
           >
-            ←
+            <ArrowLeft size={20} strokeWidth={2} aria-hidden="true" />
           </Link>
         </div>
       </section>
 
-      <main className="mx-auto max-w-4xl px-5">
+      <main className="mx-auto max-w-4xl px-4 sm:px-5">
         {/* 객실 정보 */}
         <section className="border-b py-8">
           <p className="text-sm text-gray-500">{room.type}</p>
 
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{room.name}</h1>
 
-          <div className="mt-5 flex items-end justify-between gap-5">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
             <div>
               <span className="text-2xl font-bold">
                 {room.price.toLocaleString()}원
@@ -299,16 +305,21 @@ export default function RoomDetailPage() {
           </div>
 
           {(checkIn || checkOut) && (
-            <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center rounded-2xl bg-gray-50 p-5">
+            <div className="mt-5 grid grid-cols-1 gap-2 rounded-2xl bg-gray-50 p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:p-5">
               <div>
                 <p className="text-xs text-gray-500">체크인</p>
 
                 <p className="mt-1 font-bold">{checkIn || "날짜 선택"}</p>
               </div>
 
-              <span className="px-3 text-gray-300">→</span>
+              <ArrowRight
+                size={20}
+                strokeWidth={2}
+                aria-hidden="true"
+                className="hidden text-gray-300 sm:mx-3 sm:block"
+              />
 
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-xs text-gray-500">체크아웃</p>
 
                 <p className="mt-1 font-bold">{checkOut || "날짜 선택"}</p>
@@ -348,25 +359,27 @@ export default function RoomDetailPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-3 sm:gap-5">
               <button
                 type="button"
+                aria-label="인원 감소"
                 onClick={decreaseGuestCount}
                 disabled={guestCount <= 1}
-                className="flex h-10 w-10 items-center justify-center rounded-full border text-xl disabled:opacity-30"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xl disabled:opacity-30"
               >
-                −
+                <Minus size={20} strokeWidth={2} aria-hidden="true" />
               </button>
 
               <strong className="min-w-8 text-center">{guestCount}명</strong>
 
               <button
                 type="button"
+                aria-label="인원 증가"
                 onClick={increaseGuestCount}
                 disabled={guestCount >= room.maxGuests}
-                className="flex h-10 w-10 items-center justify-center rounded-full border text-xl disabled:opacity-30"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xl disabled:opacity-30"
               >
-                +
+                <Plus size={20} strokeWidth={2} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -390,7 +403,7 @@ export default function RoomDetailPage() {
                 value={guestName}
                 onChange={(event) => setGuestName(event.target.value)}
                 placeholder="이름을 입력해 주세요"
-                className="w-full rounded-xl border px-4 py-4 outline-none focus:border-black"
+                className="min-w-0 w-full rounded-xl border px-4 py-4 outline-none focus:border-black"
               />
             </label>
 
@@ -403,7 +416,7 @@ export default function RoomDetailPage() {
                 value={phoneNumber}
                 onChange={(event) => setPhoneNumber(event.target.value)}
                 placeholder="01012345678"
-                className="w-full rounded-xl border px-4 py-4 outline-none focus:border-black"
+                className="min-w-0 w-full rounded-xl border px-4 py-4 outline-none focus:border-black"
               />
             </label>
 
@@ -414,7 +427,7 @@ export default function RoomDetailPage() {
                 value={depositorName}
                 onChange={(event) => setDepositorName(event.target.value)}
                 placeholder="입금자명을 입력해 주세요"
-                className="w-full rounded-xl border px-4 py-4 outline-none focus:border-black"
+                className="min-w-0 w-full rounded-xl border px-4 py-4 outline-none focus:border-black"
               />
             </label>
           </div>
@@ -439,7 +452,7 @@ export default function RoomDetailPage() {
 
       {/* 하단 예약 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-5 py-4">
+        <div className="mx-auto flex max-w-4xl flex-col items-stretch gap-3 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:pt-4">
           <div className="min-w-0">
             {availabilityMutation.isPending ? (
               <p className="text-sm text-gray-500">금액 확인 중...</p>
@@ -447,7 +460,7 @@ export default function RoomDetailPage() {
               <>
                 <p className="text-xs text-gray-500">{nights}박 총 금액</p>
 
-                <p className="truncate text-lg font-bold sm:text-xl">
+                <p className="text-lg font-bold sm:text-xl">
                   {totalPrice.toLocaleString()}원
                 </p>
               </>
@@ -466,7 +479,7 @@ export default function RoomDetailPage() {
               availabilityMutation.isPending ||
               reservationMutation.isPending
             }
-            className="min-w-32 rounded-xl bg-black px-6 py-4 font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 sm:min-w-44"
+            className="min-h-12 w-full shrink-0 rounded-xl bg-black px-4 py-3 sm:w-auto sm:px-6 sm:py-4 font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 sm:min-w-44"
           >
             {reservationMutation.isPending ? "예약 중..." : "예약하기"}
           </button>
