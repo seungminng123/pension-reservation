@@ -1,5 +1,6 @@
 package com.pension.backend.reservation.dto;
 
+import com.pension.backend.reservation.entity.PaymentMethod;
 import com.pension.backend.reservation.entity.Reservation;
 import com.pension.backend.reservation.entity.ReservationStatus;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class AdminReservationDetailResponse {
 
     private final Long roomId;
     private final String roomName;
+    private final String roomType;
 
     private final LocalDate checkIn;
     private final LocalDate checkOut;
@@ -30,6 +32,10 @@ public class AdminReservationDetailResponse {
     private final Long depositAmount;
 
     private final ReservationStatus status;
+
+    private final PaymentMethod paymentMethod;
+    private final LocalDateTime confirmedAt;
+
     private final LocalDateTime createdAt;
 
     public AdminReservationDetailResponse(
@@ -56,6 +62,9 @@ public class AdminReservationDetailResponse {
         this.roomName =
                 reservation.getRoom().getName();
 
+        this.roomType =
+                reservation.getRoom().getType();
+
         this.checkIn =
                 reservation.getCheckIn();
 
@@ -76,6 +85,12 @@ public class AdminReservationDetailResponse {
 
         this.status =
                 reservation.getStatus();
+
+        this.paymentMethod =
+                reservation.getPaymentMethod();
+
+        this.confirmedAt =
+                reservation.getConfirmedAt();
 
         this.createdAt =
                 reservation.getCreatedAt();

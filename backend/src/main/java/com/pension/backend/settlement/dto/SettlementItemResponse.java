@@ -1,36 +1,31 @@
-package com.pension.backend.reservation.dto;
+package com.pension.backend.settlement.dto;
 
 import com.pension.backend.reservation.entity.PaymentMethod;
 import com.pension.backend.reservation.entity.Reservation;
-import com.pension.backend.reservation.entity.ReservationStatus;
 import lombok.Getter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
-public class AdminReservationListResponse {
+public class SettlementItemResponse {
 
     private final Long reservationId;
+
     private final String reservationNumber;
 
-    private final String guestName;
+    private final String roomType;
 
     private final String roomName;
-    private final String roomType;
 
     private final Integer quantity;
 
-    private final LocalDate checkIn;
-    private final LocalDate checkOut;
-
-    private final ReservationStatus status;
+    private final Long totalPrice;
 
     private final PaymentMethod paymentMethod;
 
     private final LocalDateTime confirmedAt;
 
-    public AdminReservationListResponse(
+    public SettlementItemResponse(
             Reservation reservation
     ) {
         this.reservationId =
@@ -39,26 +34,17 @@ public class AdminReservationListResponse {
         this.reservationNumber =
                 reservation.getReservationNumber();
 
-        this.guestName =
-                reservation.getGuestName();
+        this.roomType =
+                reservation.getRoom().getType();
 
         this.roomName =
                 reservation.getRoom().getName();
 
-        this.roomType =
-                reservation.getRoom().getType();
-
         this.quantity =
                 reservation.getQuantity();
 
-        this.checkIn =
-                reservation.getCheckIn();
-
-        this.checkOut =
-                reservation.getCheckOut();
-
-        this.status =
-                reservation.getStatus();
+        this.totalPrice =
+                reservation.getTotalPrice();
 
         this.paymentMethod =
                 reservation.getPaymentMethod();

@@ -1,36 +1,35 @@
 package com.pension.backend.reservation.dto;
 
-import com.pension.backend.reservation.entity.PaymentMethod;
 import com.pension.backend.reservation.entity.Reservation;
 import com.pension.backend.reservation.entity.ReservationStatus;
 import lombok.Getter;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Getter
-public class AdminReservationListResponse {
+public class AdminReservationCalendarItemResponse {
 
     private final Long reservationId;
+
     private final String reservationNumber;
 
-    private final String guestName;
+    private final Long roomId;
+
+    private final String roomType;
 
     private final String roomName;
-    private final String roomType;
+
+    private final String guestName;
 
     private final Integer quantity;
 
     private final LocalDate checkIn;
+
     private final LocalDate checkOut;
 
     private final ReservationStatus status;
 
-    private final PaymentMethod paymentMethod;
-
-    private final LocalDateTime confirmedAt;
-
-    public AdminReservationListResponse(
+    public AdminReservationCalendarItemResponse(
             Reservation reservation
     ) {
         this.reservationId =
@@ -39,14 +38,17 @@ public class AdminReservationListResponse {
         this.reservationNumber =
                 reservation.getReservationNumber();
 
-        this.guestName =
-                reservation.getGuestName();
+        this.roomId =
+                reservation.getRoom().getRoomId();
+
+        this.roomType =
+                reservation.getRoom().getType();
 
         this.roomName =
                 reservation.getRoom().getName();
 
-        this.roomType =
-                reservation.getRoom().getType();
+        this.guestName =
+                reservation.getGuestName();
 
         this.quantity =
                 reservation.getQuantity();
@@ -59,11 +61,5 @@ public class AdminReservationListResponse {
 
         this.status =
                 reservation.getStatus();
-
-        this.paymentMethod =
-                reservation.getPaymentMethod();
-
-        this.confirmedAt =
-                reservation.getConfirmedAt();
     }
 }

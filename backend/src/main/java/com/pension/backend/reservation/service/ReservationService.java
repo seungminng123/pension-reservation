@@ -1,11 +1,8 @@
 package com.pension.backend.reservation.service;
 
 import com.pension.backend.price.service.RoomDailyPriceService;
-import com.pension.backend.reservation.dto.AdminReservationDetailResponse;
-import com.pension.backend.reservation.dto.AdminReservationListResponse;
-import com.pension.backend.reservation.dto.ReservationCreateRequest;
-import com.pension.backend.reservation.dto.ReservationResponse;
-import com.pension.backend.reservation.dto.ReservationStatusResponse;
+import com.pension.backend.reservation.dto.*;
+import com.pension.backend.reservation.entity.PaymentMethod;
 import com.pension.backend.reservation.entity.Reservation;
 import com.pension.backend.reservation.entity.ReservationStatus;
 import com.pension.backend.reservation.repository.ReservationRepository;
@@ -16,10 +13,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.*;
 import java.util.UUID;
 
 @Service
@@ -173,7 +172,7 @@ public class ReservationService {
         );
     }
 
-    // 예약 조회
+    // 사용자 예약 조회
     public ReservationResponse lookupReservation(
             String reservationNumber,
             String phoneNumber
@@ -196,7 +195,7 @@ public class ReservationService {
         );
     }
 
-    // 예약 취소 요청
+    // 사용자 취소 요청
     @Transactional
     public ReservationStatusResponse requestCancel(
             String reservationNumber,
@@ -230,10 +229,13 @@ public class ReservationService {
         List<Reservation> reservations;
 
         if (status == null) {
+
             reservations =
                     reservationRepository
                             .findAll();
+
         } else {
+
             reservations =
                     reservationRepository
                             .findAllByStatusOrderByCreatedAtDesc(
@@ -244,11 +246,10 @@ public class ReservationService {
         return reservations
                 .stream()
                 .sorted(
-                        (a, b) ->
-                                b.getCreatedAt()
-                                        .compareTo(
-                                                a.getCreatedAt()
-                                        )
+                        Comparator.comparing(
+                                        Reservation::getCreatedAt
+                                )
+                                .reversed()
                 )
                 .map(
                         AdminReservationListResponse::new
@@ -271,25 +272,222 @@ public class ReservationService {
         );
     }
 
-    // 예약 확정
+    // 관리자 월별 예약 캘린더
+    public List<AdminReservationCalendarDayResponse>
+    getAdminReservationCalendar(
+            int year,
+            int month
+    ) {
+        YearMonth yearMonth;
+
+        try {
+            yearMonth =
+                    YearMonth.of(
+                            year,
+                            month
+                    );
+        } catch (
+                DateTimeException e
+        ) {
+            throw new IllegalArgumentException(
+                    "올바른 연도와 월을 입력해 주세요."
+            );
+        }
+
+        LocalDate monthStart =
+                yearMonth.atDay(1);
+
+        LocalDate monthEndExclusive =
+                yearMonth
+                        .plusMonths(1)
+                        .atDay(1);
+
+        List<Reservation> reservations =
+                reservationRepository
+                        .findAllOverlappingReservations(
+                                monthStart,
+                                monthEndExclusive,
+                                ReservationStatus.CANCELED
+                        );
+
+        Map<LocalDate, List<Reservation>>
+                reservationsByDate =
+                new HashMap<>();
+
+        for (
+                Reservation reservation :
+                reservations
+        ) {
+            LocalDate startDate =
+                    reservation
+                            .getCheckIn()
+                            .isBefore(monthStart)
+                            ? monthStart
+                            : reservation.getCheckIn();
+
+            LocalDate endDate =
+                    reservation
+                            .getCheckOut()
+                            .isAfter(monthEndExclusive)
+                            ? monthEndExclusive
+                            : reservation.getCheckOut();
+
+            LocalDate current =
+                    startDate;
+
+            while (
+                    current.isBefore(
+                            endDate
+                    )
+            ) {
+                reservationsByDate
+                        .computeIfAbsent(
+                                current,
+                                key ->
+                                        new ArrayList<>()
+                        )
+                        .add(
+                                reservation
+                        );
+
+                current =
+                        current.plusDays(1);
+            }
+        }
+
+        List<AdminReservationCalendarDayResponse>
+                result =
+                new ArrayList<>();
+
+        LocalDate current =
+                monthStart;
+
+        while (
+                current.isBefore(
+                        monthEndExclusive
+                )
+        ) {
+            List<Reservation> dayReservations =
+                    reservationsByDate
+                            .getOrDefault(
+                                    current,
+                                    List.of()
+                            );
+
+            if (!dayReservations.isEmpty()) {
+
+                int reservedQuantity =
+                        dayReservations
+                                .stream()
+                                .mapToInt(
+                                        reservation ->
+                                                reservation.getQuantity() == null
+                                                        ? 1
+                                                        : reservation.getQuantity()
+                                )
+                                .sum();
+
+                int pendingCount =
+                        countStatus(
+                                dayReservations,
+                                ReservationStatus.PENDING
+                        );
+
+                int confirmedCount =
+                        countStatus(
+                                dayReservations,
+                                ReservationStatus.CONFIRMED
+                        );
+
+                int cancelRequestedCount =
+                        countStatus(
+                                dayReservations,
+                                ReservationStatus.CANCEL_REQUESTED
+                        );
+
+                result.add(
+                        new AdminReservationCalendarDayResponse(
+                                current,
+                                dayReservations.size(),
+                                reservedQuantity,
+                                pendingCount,
+                                confirmedCount,
+                                cancelRequestedCount
+                        )
+                );
+            }
+
+            current =
+                    current.plusDays(1);
+        }
+
+        return result;
+    }
+
+    // 관리자 특정 날짜 예약 조회
+    public List<AdminReservationCalendarItemResponse>
+    getAdminReservationsByDate(
+            LocalDate date
+    ) {
+        if (date == null) {
+            throw new IllegalArgumentException(
+                    "날짜를 입력해 주세요."
+            );
+        }
+
+        List<Reservation> reservations =
+                reservationRepository
+                        .findAllOverlappingReservations(
+                                date,
+                                date.plusDays(1),
+                                ReservationStatus.CANCELED
+                        );
+
+        return reservations
+                .stream()
+                .sorted(
+                        Comparator
+                                .comparing(
+                                        (Reservation reservation) ->
+                                                reservation
+                                                        .getRoom()
+                                                        .getType()
+                                )
+                                .thenComparing(
+                                        reservation ->
+                                                reservation
+                                                        .getRoom()
+                                                        .getName()
+                                )
+                )
+                .map(
+                        AdminReservationCalendarItemResponse::new
+                )
+                .toList();
+    }
+
+    // 관리자 예약 확정
     @Transactional
     public ReservationStatusResponse
     confirmReservation(
-            Long reservationId
+            Long reservationId,
+            PaymentMethod paymentMethod
     ) {
         Reservation reservation =
                 findReservation(
                         reservationId
                 );
 
-        reservation.confirm();
+        reservation.confirm(
+                paymentMethod
+        );
 
         return new ReservationStatusResponse(
                 reservation
         );
     }
 
-    // 예약 취소
+    // 관리자 예약 취소
     @Transactional
     public ReservationStatusResponse
     cancelReservation(
@@ -307,7 +505,22 @@ public class ReservationService {
         );
     }
 
-    // 기간 중 최소 잔여 수량
+    private int countStatus(
+            List<Reservation> reservations,
+            ReservationStatus status
+    ) {
+        return (int)
+                reservations
+                        .stream()
+                        .filter(
+                                reservation ->
+                                        reservation.getStatus()
+                                                == status
+                        )
+                        .count();
+    }
+
+    // 기간 최소 잔여 수량
     private int calculateMinimumRemaining(
             Room room,
             List<Reservation> reservations,
@@ -325,7 +538,8 @@ public class ReservationService {
                         checkOut
                 )
         ) {
-            int reservedCount = 0;
+            int reservedCount =
+                    0;
 
             for (
                     Reservation reservation :
@@ -367,7 +581,6 @@ public class ReservationService {
         return minimumRemaining;
     }
 
-    // 예약 단건 조회
     private Reservation findReservation(
             Long reservationId
     ) {
@@ -383,7 +596,6 @@ public class ReservationService {
                 );
     }
 
-    // 날짜 검증
     private void validateDate(
             LocalDate checkIn,
             LocalDate checkOut
@@ -418,8 +630,8 @@ public class ReservationService {
         }
     }
 
-    // 예약번호 생성
     private String generateReservationNumber() {
+
         String timestamp =
                 LocalDateTime
                         .now()

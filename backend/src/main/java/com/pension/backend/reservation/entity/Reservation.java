@@ -45,7 +45,6 @@ public class Reservation {
     @Column(nullable = false)
     private Integer guestCount;
 
-    // 예약 수량
     @Column(
             nullable = false,
             columnDefinition = "INT NOT NULL DEFAULT 1"
@@ -67,6 +66,13 @@ public class Reservation {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ReservationStatus status;
+
+    // 결제 수단
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
+
+    // 관리자 예약 확정 시간
+    private LocalDateTime confirmedAt;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -121,7 +127,9 @@ public class Reservation {
                 ReservationStatus.PENDING;
     }
 
+    // 취소 요청
     public void requestCancel() {
+
         if (
                 status ==
                         ReservationStatus.CANCELED
@@ -140,7 +148,11 @@ public class Reservation {
         }
     }
 
-    public void confirm() {
+    // 예약 확정
+    public void confirm(
+            PaymentMethod paymentMethod
+    ) {
+
         if (
                 status !=
                         ReservationStatus.PENDING
@@ -150,11 +162,25 @@ public class Reservation {
             );
         }
 
-        status =
+        if (paymentMethod == null) {
+            throw new IllegalArgumentException(
+                    "결제 수단을 선택해 주세요."
+            );
+        }
+
+        this.paymentMethod =
+                paymentMethod;
+
+        this.confirmedAt =
+                LocalDateTime.now();
+
+        this.status =
                 ReservationStatus.CONFIRMED;
     }
 
+    // 예약 취소
     public void cancel() {
+
         status =
                 ReservationStatus.CANCELED;
     }

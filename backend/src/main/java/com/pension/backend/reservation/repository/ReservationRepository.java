@@ -7,12 +7,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface ReservationRepository
         extends JpaRepository<Reservation, Long> {
 
+    // 특정 상품의 기간 겹침 예약
     @Query("""
             SELECT r
             FROM Reservation r
@@ -26,6 +28,26 @@ public interface ReservationRepository
             @Param("roomId")
             Long roomId,
 
+            @Param("startDate")
+            LocalDate startDate,
+
+            @Param("endDate")
+            LocalDate endDate,
+
+            @Param("canceledStatus")
+            ReservationStatus canceledStatus
+    );
+
+    // 전체 상품의 기간 겹침 예약
+    @Query("""
+            SELECT r
+            FROM Reservation r
+            WHERE r.status <> :canceledStatus
+              AND r.checkIn < :endDate
+              AND r.checkOut > :startDate
+            """)
+    List<Reservation>
+    findAllOverlappingReservations(
             @Param("startDate")
             LocalDate startDate,
 
@@ -51,5 +73,13 @@ public interface ReservationRepository
     findAllByRoomRoomIdAndStatusNot(
             Long roomId,
             ReservationStatus status
+    );
+
+    // 정산 조회
+    List<Reservation>
+    findAllByStatusAndConfirmedAtGreaterThanEqualAndConfirmedAtLessThanOrderByConfirmedAtAsc(
+            ReservationStatus status,
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime
     );
 }

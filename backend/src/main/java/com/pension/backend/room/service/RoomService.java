@@ -884,7 +884,60 @@ public class RoomService {
                                 )
                 );
     }
+    // 선택 기간 상품 목록 조회
+    public List<AvailableRoomResponse>
+    getAvailableRooms(
+            LocalDate checkIn,
+            LocalDate checkOut
+    ) {
+        validateDate(
+                checkIn,
+                checkOut
+        );
 
+        List<Room> rooms =
+                roomRepository
+                        .findAllByActiveTrueAndSaleEnabledTrueOrderByRoomIdAsc();
+
+        return rooms
+                .stream()
+                .map(
+                        room -> {
+                            List<Reservation> reservations =
+                                    reservationRepository
+                                            .findOverlappingReservations(
+                                                    room.getRoomId(),
+                                                    checkIn,
+                                                    checkOut,
+                                                    ReservationStatus.CANCELED
+                                            );
+
+                            int remainingCount =
+                                    calculateMinimumRemaining(
+                                            room,
+                                            reservations,
+                                            checkIn,
+                                            checkOut
+                                    );
+
+                            long totalPrice =
+                                    roomDailyPriceService
+                                            .calculateTotalPrice(
+                                                    room,
+                                                    checkIn,
+                                                    checkOut
+                                            );
+
+                            return new AvailableRoomResponse(
+                                    room,
+                                    remainingCount,
+                                    totalPrice,
+                                    hasImage(room)
+                            );
+                        }
+                )
+                .toList();
+    }
     // 날짜 검증
     private void validateDate(
             LocalDate checkIn,
@@ -918,5 +971,6 @@ public class RoomService {
                     "지난 날짜에는 예약할 수 없습니다."
             );
         }
+
     }
 }

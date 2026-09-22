@@ -17,7 +17,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/reservations")
-@Tag(name = "예약", description = "사용자 예약 API")
+@Tag(
+        name = "예약",
+        description = "사용자 예약 API"
+)
 public class ReservationController {
 
     private final ReservationService reservationService;
@@ -25,7 +28,7 @@ public class ReservationController {
     // 예약 생성
     @Operation(
             summary = "예약 신청",
-            description = "객실과 날짜, 예약자 정보를 입력해 예약을 신청합니다."
+            description = "상품과 날짜, 예약자 정보를 입력해 예약을 신청합니다."
     )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -34,9 +37,10 @@ public class ReservationController {
             @RequestBody
             ReservationCreateRequest request
     ) {
-        return reservationService.createReservation(
-                request
-        );
+        return reservationService
+                .createReservation(
+                        request
+                );
     }
 
     // 예약 조회
@@ -50,10 +54,11 @@ public class ReservationController {
             @RequestBody
             ReservationLookupRequest request
     ) {
-        return reservationService.lookupReservation(
-                request.getReservationNumber(),
-                request.getPhoneNumber()
-        );
+        return reservationService
+                .lookupReservation(
+                        request.getReservationNumber(),
+                        request.getPhoneNumber()
+                );
     }
 
     // 예약 취소 요청
@@ -61,11 +66,13 @@ public class ReservationController {
             summary = "예약 취소 요청",
             description = "예약번호와 전화번호를 확인한 후 예약 취소를 요청합니다."
     )
-    @PatchMapping("/{reservationNumber}/cancel-request")
+    @PatchMapping(
+            "/{reservationNumber}/cancel-request"
+    )
     public ReservationStatusResponse requestCancel(
             @Parameter(
                     description = "예약번호",
-                    example = "R20261003120000ABC123"
+                    example = "R20260922120000ABC123"
             )
             @PathVariable
             String reservationNumber,
@@ -74,9 +81,10 @@ public class ReservationController {
             @RequestBody
             ReservationCancelRequest request
     ) {
-        return reservationService.requestCancel(
-                reservationNumber,
-                request.getPhoneNumber()
-        );
+        return reservationService
+                .requestCancel(
+                        reservationNumber,
+                        request.getPhoneNumber()
+                );
     }
 }
