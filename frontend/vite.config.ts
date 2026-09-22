@@ -11,45 +11,28 @@ export default defineConfig({
     tailwindcss(),
 
     VitePWA({
+      // 새 버전 배포 시 서비스 워커 자동 업데이트
+      registerType: "autoUpdate",
+
       // service worker 자동 등록
       injectRegister: "auto",
 
-      // favicon 등 정적 파일 포함
-      includeAssets: ["favicon.svg", "pwa-192x192.png", "pwa-512x512.png"],
+      // manifest는 사용자용 / 관리자용으로 직접 관리
+      manifest: false,
 
-      manifest: {
-        name: "펜션 예약",
-        short_name: "펜션 예약",
+      // PWA 관련 정적 파일
+      includeAssets: [
+        "favicon.svg",
 
-        description: "방과 평상을 간편하게 예약할 수 있는 펜션 예약 서비스",
+        "pwa-192x192.png",
+        "pwa-512x512.png",
 
-        start_url: "/",
-        scope: "/",
+        "admin-pwa-192x192.png",
+        "admin-pwa-512x512.png",
 
-        display: "standalone",
-
-        background_color: "#ffffff",
-        theme_color: "#ffffff",
-
-        icons: [
-          {
-            src: "/pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "/pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
-      },
+        "manifest.webmanifest",
+        "admin-manifest.webmanifest",
+      ],
     }),
   ],
 

@@ -5,7 +5,20 @@
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+    <!-- 기본 PWA: 사용자용 -->
+    <link id="app-manifest" rel="manifest" href="/manifest.webmanifest" />
+
+    <link
+      id="apple-touch-icon"
+      rel="apple-touch-icon"
+      href="/pwa-192x192.png"
+    />
+
+    <meta
+      id="apple-app-title"
+      name="apple-mobile-web-app-title"
+      content="펜션 예약"
+    />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -15,9 +28,31 @@
 
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-    <meta name="apple-mobile-web-app-title" content="펜션 예약" />
-
     <title>펜션 예약</title>
+
+    <script>
+      (() => {
+        const isAdmin = window.location.pathname.startsWith("/admin");
+
+        if (!isAdmin) {
+          return;
+        }
+
+        const manifest = document.getElementById("app-manifest");
+
+        const appleIcon = document.getElementById("apple-touch-icon");
+
+        const appleTitle = document.getElementById("apple-app-title");
+
+        manifest.href = "/admin-manifest.webmanifest";
+
+        appleIcon.href = "/admin-pwa-192x192.png";
+
+        appleTitle.content = "펜션 관리자";
+
+        document.title = "펜션 관리자";
+      })();
+    </script>
   </head>
 
   <body>

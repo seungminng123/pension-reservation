@@ -1,3 +1,4 @@
+import PwaMetaManager from "@/components/common/PwaMetaManager";
 import AdminSettlementsPage from "@/pages/admin/AdminSettlementsPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 
@@ -15,34 +16,38 @@ import RoomDetailPage from "@/pages/RoomDetailPage";
 
 export default function App() {
   return (
-    <Routes>
-      {/* 사용자 */}
-      <Route path="/" element={<HomePage />} />
+    <>
+      <PwaMetaManager />
 
-      <Route path="/rooms/:roomId" element={<RoomDetailPage />} />
+      <Routes>
+        {/* 사용자 */}
+        <Route path="/" element={<HomePage />} />
 
-      <Route path="/reservation/lookup" element={<ReservationLookupPage />} />
+        <Route path="/rooms/:roomId" element={<RoomDetailPage />} />
 
-      {/* 관리자 로그인 */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/reservation/lookup" element={<ReservationLookupPage />} />
 
-      {/* 관리자 인증 필요 */}
-      <Route element={<AdminProtectedRoute />}>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="reservations" replace />} />
+        {/* 관리자 로그인 */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
 
-          <Route path="reservations" element={<AdminReservationsPage />} />
+        {/* 관리자 인증 필요 */}
+        <Route element={<AdminProtectedRoute />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="reservations" replace />} />
 
-          <Route path="settlements" element={<AdminSettlementsPage />} />
+            <Route path="reservations" element={<AdminReservationsPage />} />
 
-          <Route path="rooms" element={<AdminRoomsPage />} />
+            <Route path="settlements" element={<AdminSettlementsPage />} />
 
-          <Route
-            path="rooms/:roomId/pricing"
-            element={<AdminRoomPricingPage />}
-          />
+            <Route path="rooms" element={<AdminRoomsPage />} />
+
+            <Route
+              path="rooms/:roomId/pricing"
+              element={<AdminRoomPricingPage />}
+            />
+          </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 }
