@@ -1,10 +1,10 @@
 {
-  "id": "/admin/",
+  "id": "/",
   "name": "펜션 관리자",
   "short_name": "펜션 관리자",
   "description": "펜션 예약 및 객실 관리자 서비스",
-  "start_url": "/admin/reservations",
-  "scope": "/admin/",
+  "start_url": "/admin/login",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",

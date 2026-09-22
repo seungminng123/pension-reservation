@@ -1,14 +1,15 @@
-import PwaMetaManager from "@/components/common/PwaMetaManager";
-import AdminSettlementsPage from "@/pages/admin/AdminSettlementsPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import AdminDomainRedirect from "@/components/admin/AdminDomainRedirect";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import PwaMetaManager from "@/components/common/PwaMetaManager";
 
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
 import AdminReservationsPage from "@/pages/admin/AdminReservationsPage";
 import AdminRoomPricingPage from "@/pages/admin/AdminRoomPricingPage";
 import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
+import AdminSettlementsPage from "@/pages/admin/AdminSettlementsPage";
 
 import HomePage from "@/pages/HomePage";
 import ReservationLookupPage from "@/pages/ReservationLookupPage";
@@ -17,6 +18,7 @@ import RoomDetailPage from "@/pages/RoomDetailPage";
 export default function App() {
   return (
     <>
+      <AdminDomainRedirect />
       <PwaMetaManager />
 
       <Routes>
