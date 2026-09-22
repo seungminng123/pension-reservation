@@ -24,26 +24,60 @@ public class AdminReservationDetailResponse {
     private final LocalDate checkOut;
 
     private final Integer guestCount;
+    private final Integer quantity;
+
     private final Long totalPrice;
     private final Long depositAmount;
 
     private final ReservationStatus status;
     private final LocalDateTime createdAt;
 
-    public AdminReservationDetailResponse(Reservation reservation) {
-        this.reservationId = reservation.getReservationId();
-        this.reservationNumber = reservation.getReservationNumber();
-        this.guestName = reservation.getGuestName();
-        this.phoneNumber = reservation.getPhoneNumber();
-        this.depositorName = reservation.getDepositorName();
-        this.roomId = reservation.getRoom().getRoomId();
-        this.roomName = reservation.getRoom().getName();
-        this.checkIn = reservation.getCheckIn();
-        this.checkOut = reservation.getCheckOut();
-        this.guestCount = reservation.getGuestCount();
-        this.totalPrice = reservation.getTotalPrice();
-        this.depositAmount = reservation.getDepositAmount();
-        this.status = reservation.getStatus();
-        this.createdAt = reservation.getCreatedAt();
+    public AdminReservationDetailResponse(
+            Reservation reservation
+    ) {
+        this.reservationId =
+                reservation.getReservationId();
+
+        this.reservationNumber =
+                reservation.getReservationNumber();
+
+        this.guestName =
+                reservation.getGuestName();
+
+        this.phoneNumber =
+                reservation.getPhoneNumber();
+
+        this.depositorName =
+                reservation.getDepositorName();
+
+        this.roomId =
+                reservation.getRoom().getRoomId();
+
+        this.roomName =
+                reservation.getRoom().getName();
+
+        this.checkIn =
+                reservation.getCheckIn();
+
+        this.checkOut =
+                reservation.getCheckOut();
+
+        this.guestCount =
+                reservation.getGuestCount();
+
+        this.quantity =
+                reservation.getQuantity();
+
+        this.totalPrice =
+                reservation.getTotalPrice();
+
+        this.depositAmount =
+                reservation.getDepositAmount();
+
+        this.status =
+                reservation.getStatus();
+
+        this.createdAt =
+                reservation.getCreatedAt();
     }
 }

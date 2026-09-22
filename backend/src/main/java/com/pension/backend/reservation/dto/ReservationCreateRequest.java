@@ -24,15 +24,28 @@ public class ReservationCreateRequest {
 
     @NotNull
     @Positive
-    @Schema(example = "2")
+    @Schema(
+            description = "이용 인원",
+            example = "4"
+    )
     private Integer guestCount;
+
+    @Positive
+    @Schema(
+            description = "예약 수량",
+            example = "2"
+    )
+    private Integer quantity = 1;
 
     @NotBlank
     @Schema(example = "김승민")
     private String guestName;
 
     @NotBlank
-    @Pattern(regexp = "^01[016789]-?\\d{3,4}-?\\d{4}$")
+    @Pattern(
+            regexp =
+                    "^01[016789]-?\\d{3,4}-?\\d{4}$"
+    )
     @Schema(example = "01012345678")
     private String phoneNumber;
 

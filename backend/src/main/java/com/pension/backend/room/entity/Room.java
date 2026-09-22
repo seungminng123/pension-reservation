@@ -33,12 +33,26 @@ public class Room {
     @Column(nullable = false)
     private Integer guestCount;
 
-    // 객실 이미지
-    @Lob
-    @Column(columnDefinition = "LONGBLOB")
-    private byte[] imageData;
+    // 전체 재고
+    @Column(
+            nullable = false,
+            columnDefinition = "INT NOT NULL DEFAULT 1"
+    )
+    private Integer stockCount = 1;
 
-    private String imageContentType;
+    // 삭제 여부
+    @Column(
+            nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE"
+    )
+    private boolean active = true;
+
+    // 판매 여부
+    @Column(
+            nullable = false,
+            columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE"
+    )
+    private boolean saleEnabled = true;
 
     public Room(
             String type,
@@ -46,7 +60,9 @@ public class Room {
             String description,
             Long price,
             Integer maxGuests,
-            Integer guestCount
+            Integer guestCount,
+            Integer stockCount,
+            boolean saleEnabled
     ) {
         this.type = type;
         this.name = name;
@@ -54,6 +70,9 @@ public class Room {
         this.price = price;
         this.maxGuests = maxGuests;
         this.guestCount = guestCount;
+        this.stockCount = stockCount;
+        this.saleEnabled = saleEnabled;
+        this.active = true;
     }
 
     // 객실 수정
@@ -63,7 +82,9 @@ public class Room {
             String description,
             Long price,
             Integer maxGuests,
-            Integer guestCount
+            Integer guestCount,
+            Integer stockCount,
+            Boolean saleEnabled
     ) {
         if (type != null) this.type = type;
         if (name != null) this.name = name;
@@ -71,14 +92,13 @@ public class Room {
         if (price != null) this.price = price;
         if (maxGuests != null) this.maxGuests = maxGuests;
         if (guestCount != null) this.guestCount = guestCount;
+        if (stockCount != null) this.stockCount = stockCount;
+        if (saleEnabled != null) this.saleEnabled = saleEnabled;
     }
 
-    // 이미지 수정
-    public void updateImage(
-            byte[] imageData,
-            String imageContentType
-    ) {
-        this.imageData = imageData;
-        this.imageContentType = imageContentType;
+    // 객실 삭제
+    public void deactivate() {
+        this.active = false;
+        this.saleEnabled = false;
     }
 }

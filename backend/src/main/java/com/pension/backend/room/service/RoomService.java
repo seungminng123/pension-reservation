@@ -5,14 +5,10 @@ import com.pension.backend.price.service.RoomDailyPriceService;
 import com.pension.backend.reservation.entity.Reservation;
 import com.pension.backend.reservation.entity.ReservationStatus;
 import com.pension.backend.reservation.repository.ReservationRepository;
-import com.pension.backend.room.dto.RoomAvailabilityCheckResponse;
-import com.pension.backend.room.dto.RoomAvailabilityResponse;
-import com.pension.backend.room.dto.RoomCreateRequest;
-import com.pension.backend.room.dto.RoomDetailResponse;
-import com.pension.backend.room.dto.RoomImageResponse;
-import com.pension.backend.room.dto.RoomListResponse;
-import com.pension.backend.room.dto.RoomUpdateRequest;
+import com.pension.backend.room.dto.*;
 import com.pension.backend.room.entity.Room;
+import com.pension.backend.room.entity.RoomImage;
+import com.pension.backend.room.repository.RoomImageRepository;
 import com.pension.backend.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +20,9 @@ import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -34,65 +32,86 @@ public class RoomService {
     private static final long MAX_IMAGE_SIZE =
             10 * 1024 * 1024;
 
-    private final RoomRepository roomRepository;
-    private final ReservationRepository reservationRepository;
-    private final RoomDailyPriceService roomDailyPriceService;
+    private static final int MAX_IMAGE_COUNT =
+            10;
 
-    // 객실 목록 조회
+    private final RoomRepository
+            roomRepository;
+
+    private final ReservationRepository
+            reservationRepository;
+
+    private final RoomDailyPriceService
+            roomDailyPriceService;
+
+    private final RoomImageRepository
+            roomImageRepository;
+
+    // 사용자 객실 목록
     public List<RoomListResponse> getRooms() {
         return roomRepository
-                .findAll()
+                .findAllByActiveTrueAndSaleEnabledTrueOrderByRoomIdAsc()
                 .stream()
-                .map(RoomListResponse::new)
+                .map(
+                        room ->
+                                new RoomListResponse(
+                                        room,
+                                        hasImage(room)
+                                )
+                )
                 .toList();
     }
 
-    // 객실 상세 조회
+    // 관리자 객실 목록
+    public List<RoomListResponse>
+    getAdminRooms() {
+        return roomRepository
+                .findAllByActiveTrueOrderByRoomIdAsc()
+                .stream()
+                .map(
+                        room ->
+                                new RoomListResponse(
+                                        room,
+                                        hasImage(room)
+                                )
+                )
+                .toList();
+    }
+
+    // 객실 상세
     public RoomDetailResponse getRoom(
             Long roomId
     ) {
-        Room room = findRoom(roomId);
+        Room room =
+                findRoom(roomId);
 
-        return new RoomDetailResponse(room);
-    }
-
-    // 객실 이미지 조회
-    public RoomImageResponse getRoomImage(
-            Long roomId
-    ) {
-        Room room = findRoom(roomId);
-
-        if (
-                room.getImageData() == null ||
-                        room.getImageContentType() == null
-        ) {
-            throw new IllegalArgumentException(
-                    "등록된 객실 이미지가 없습니다."
-            );
-        }
-
-        return new RoomImageResponse(
-                room.getImageData(),
-                room.getImageContentType()
+        return new RoomDetailResponse(
+                room,
+                hasImage(room)
         );
     }
 
-    // 월별 예약 정보 조회
-    public RoomAvailabilityResponse getAvailability(
+    // 월별 예약 정보
+    public RoomAvailabilityResponse
+    getAvailability(
             Long roomId,
             int year,
             int month
     ) {
-        Room room = findRoom(roomId);
+        Room room =
+                findRoom(roomId);
 
         YearMonth yearMonth;
 
         try {
-            yearMonth = YearMonth.of(
-                    year,
-                    month
-            );
-        } catch (DateTimeException e) {
+            yearMonth =
+                    YearMonth.of(
+                            year,
+                            month
+                    );
+        } catch (
+                DateTimeException e
+        ) {
             throw new IllegalArgumentException(
                     "올바른 연도와 월을 입력해 주세요."
             );
@@ -115,36 +134,60 @@ public class RoomService {
                                 ReservationStatus.CANCELED
                         );
 
-        List<LocalDate> unavailableDates =
+        List<RoomDailyStockResponse>
+                dailyStocks =
                 new ArrayList<>();
 
-        for (Reservation reservation : reservations) {
-            LocalDate startDate =
-                    reservation
-                            .getCheckIn()
-                            .isBefore(monthStart)
-                            ? monthStart
-                            : reservation.getCheckIn();
+        List<LocalDate>
+                unavailableDates =
+                new ArrayList<>();
 
-            LocalDate endDate =
-                    reservation
-                            .getCheckOut()
-                            .isAfter(monthEndExclusive)
-                            ? monthEndExclusive
-                            : reservation.getCheckOut();
+        LocalDate current =
+                monthStart;
 
-            LocalDate current =
-                    startDate;
+        while (
+                current.isBefore(
+                        monthEndExclusive
+                )
+        ) {
+            int reservedCount =
+                    getReservedCount(
+                            reservations,
+                            current
+                    );
 
-            while (current.isBefore(endDate)) {
-                unavailableDates.add(current);
+            int remaining =
+                    room.isSaleEnabled()
+                            ? Math.max(
+                            0,
+                            room.getStockCount() -
+                                    reservedCount
+                    )
+                            : 0;
 
-                current =
-                        current.plusDays(1);
+            boolean soldOut =
+                    remaining == 0;
+
+            dailyStocks.add(
+                    new RoomDailyStockResponse(
+                            current,
+                            remaining,
+                            soldOut
+                    )
+            );
+
+            if (soldOut) {
+                unavailableDates.add(
+                        current
+                );
             }
+
+            current =
+                    current.plusDays(1);
         }
 
-        RoomMonthlyPriceResponse monthlyPrices =
+        RoomMonthlyPriceResponse
+                monthlyPrices =
                 roomDailyPriceService
                         .getMonthlyPrices(
                                 room,
@@ -156,45 +199,73 @@ public class RoomService {
                 roomId,
                 year,
                 month,
-                unavailableDates
-                        .stream()
-                        .distinct()
-                        .sorted()
-                        .toList(),
-                monthlyPrices.getPrices()
+                unavailableDates,
+                monthlyPrices.getPrices(),
+                dailyStocks
         );
     }
 
     // 예약 가능 여부 확인
-    public RoomAvailabilityCheckResponse checkAvailability(
+    public RoomAvailabilityCheckResponse
+    checkAvailability(
             Long roomId,
             LocalDate checkIn,
-            LocalDate checkOut
+            LocalDate checkOut,
+            int quantity
     ) {
         validateDate(
                 checkIn,
                 checkOut
         );
 
-        Room room = findRoom(roomId);
+        if (quantity < 1) {
+            throw new IllegalArgumentException(
+                    "예약 수량은 1개 이상이어야 합니다."
+            );
+        }
 
-        boolean hasOverlap =
+        Room room =
+                findRoom(roomId);
+
+        if (
+                !room.isSaleEnabled()
+        ) {
+            return new RoomAvailabilityCheckResponse(
+                    false,
+                    null,
+                    0
+            );
+        }
+
+        List<Reservation> reservations =
                 reservationRepository
-                        .existsOverlappingReservation(
+                        .findOverlappingReservations(
                                 roomId,
                                 checkIn,
                                 checkOut,
                                 ReservationStatus.CANCELED
                         );
 
-        if (hasOverlap) {
+        int minimumRemaining =
+                calculateMinimumRemaining(
+                        room,
+                        reservations,
+                        checkIn,
+                        checkOut
+                );
+
+        if (
+                minimumRemaining <
+                        quantity
+        ) {
             return new RoomAvailabilityCheckResponse(
                     false,
-                    null
+                    null,
+                    minimumRemaining
             );
         }
 
-        long totalPrice =
+        long oneUnitPrice =
                 roomDailyPriceService
                         .calculateTotalPrice(
                                 room,
@@ -202,9 +273,16 @@ public class RoomService {
                                 checkOut
                         );
 
+        long totalPrice =
+                Math.multiplyExact(
+                        oneUnitPrice,
+                        quantity
+                );
+
         return new RoomAvailabilityCheckResponse(
                 true,
-                totalPrice
+                totalPrice,
+                minimumRemaining
         );
     }
 
@@ -213,20 +291,35 @@ public class RoomService {
     public RoomDetailResponse createRoom(
             RoomCreateRequest request
     ) {
-        Room room = new Room(
-                request.getType(),
-                request.getName(),
-                request.getDescription(),
-                request.getPrice(),
-                request.getMaxGuests(),
-                request.getGuestCount()
-        );
+        int stockCount =
+                request.getStockCount() == null
+                        ? 1
+                        : request.getStockCount();
+
+        boolean saleEnabled =
+                request.getSaleEnabled() == null ||
+                        request.getSaleEnabled();
+
+        Room room =
+                new Room(
+                        request.getType(),
+                        request.getName(),
+                        request.getDescription(),
+                        request.getPrice(),
+                        request.getMaxGuests(),
+                        request.getGuestCount(),
+                        stockCount,
+                        saleEnabled
+                );
 
         Room savedRoom =
-                roomRepository.save(room);
+                roomRepository.save(
+                        room
+                );
 
         return new RoomDetailResponse(
-                savedRoom
+                savedRoom,
+                false
         );
     }
 
@@ -239,27 +332,454 @@ public class RoomService {
         Room room =
                 findRoom(roomId);
 
+        if (
+                request.getStockCount() != null
+        ) {
+            validateStockChange(
+                    room,
+                    request.getStockCount()
+            );
+        }
+
         room.update(
                 request.getType(),
                 request.getName(),
                 request.getDescription(),
                 request.getPrice(),
                 request.getMaxGuests(),
-                request.getGuestCount()
+                request.getGuestCount(),
+                request.getStockCount(),
+                request.getSaleEnabled()
         );
 
-        return new RoomDetailResponse(room);
+        return new RoomDetailResponse(
+                room,
+                hasImage(room)
+        );
     }
 
-    // 객실 이미지 저장
+    // 객실 삭제
+    @Transactional
+    public void deleteRoom(
+            Long roomId
+    ) {
+        Room room =
+                findRoom(roomId);
+
+        room.deactivate();
+    }
+
+    // 이미지 여러 장 업로드
+    @Transactional
+    public List<RoomImageMetaResponse>
+    uploadRoomImages(
+            Long roomId,
+            List<MultipartFile> files
+    ) {
+        Room room =
+                findRoom(roomId);
+
+        if (
+                files == null ||
+                        files.isEmpty()
+        ) {
+            throw new IllegalArgumentException(
+                    "이미지를 선택해 주세요."
+            );
+        }
+
+        long currentCount =
+                roomImageRepository
+                        .countByRoomRoomId(
+                                roomId
+                        );
+
+        if (
+                currentCount +
+                        files.size() >
+                        MAX_IMAGE_COUNT
+        ) {
+            throw new IllegalArgumentException(
+                    "객실 이미지는 최대 10장까지 등록할 수 있습니다."
+            );
+        }
+
+        List<RoomImage> existing =
+                roomImageRepository
+                        .findAllByRoomRoomIdOrderByDisplayOrderAscRoomImageIdAsc(
+                                roomId
+                        );
+
+        int nextOrder =
+                existing.isEmpty()
+                        ? 0
+                        : existing
+                        .get(
+                                existing.size() - 1
+                        )
+                        .getDisplayOrder()
+                        + 1;
+
+        List<RoomImageMetaResponse>
+                result =
+                new ArrayList<>();
+
+        for (
+                MultipartFile file :
+                files
+        ) {
+            validateImage(
+                    file
+            );
+
+            try {
+                RoomImage roomImage =
+                        new RoomImage(
+                                room,
+                                file.getBytes(),
+                                file.getContentType(),
+                                nextOrder++
+                        );
+
+                RoomImage saved =
+                        roomImageRepository.save(
+                                roomImage
+                        );
+
+                result.add(
+                        new RoomImageMetaResponse(
+                                saved
+                        )
+                );
+
+            } catch (
+                    IOException e
+            ) {
+                throw new IllegalStateException(
+                        "이미지 저장에 실패했습니다."
+                );
+            }
+        }
+
+        return result;
+    }
+
+    // 단일 이미지 업로드 호환용
     @Transactional
     public void uploadRoomImage(
             Long roomId,
             MultipartFile file
     ) {
-        Room room =
-                findRoom(roomId);
+        uploadRoomImages(
+                roomId,
+                List.of(file)
+        );
+    }
 
+    // 이미지 목록
+    public List<RoomImageMetaResponse>
+    getRoomImages(
+            Long roomId
+    ) {
+        findRoom(roomId);
+
+        return roomImageRepository
+                .findAllByRoomRoomIdOrderByDisplayOrderAscRoomImageIdAsc(
+                        roomId
+                )
+                .stream()
+                .map(
+                        RoomImageMetaResponse::new
+                )
+                .toList();
+    }
+
+    // 대표 이미지
+    public RoomImageResponse
+    getRoomImage(
+            Long roomId
+    ) {
+        findRoom(roomId);
+
+        RoomImage roomImage =
+                roomImageRepository
+                        .findFirstByRoomRoomIdOrderByDisplayOrderAscRoomImageIdAsc(
+                                roomId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "등록된 객실 이미지가 없습니다."
+                                        )
+                        );
+
+        return toImageResponse(
+                roomImage
+        );
+    }
+
+    // 이미지 단건
+    public RoomImageResponse
+    getRoomImage(
+            Long roomId,
+            Long imageId
+    ) {
+        findRoom(roomId);
+
+        RoomImage roomImage =
+                findRoomImage(
+                        roomId,
+                        imageId
+                );
+
+        return toImageResponse(
+                roomImage
+        );
+    }
+
+    // 이미지 삭제
+    @Transactional
+    public void deleteRoomImage(
+            Long roomId,
+            Long imageId
+    ) {
+        findRoom(roomId);
+
+        RoomImage roomImage =
+                findRoomImage(
+                        roomId,
+                        imageId
+                );
+
+        roomImageRepository.delete(
+                roomImage
+        );
+
+        normalizeImageOrder(
+                roomId
+        );
+    }
+
+    // 이미지 순서 변경
+    @Transactional
+    public List<RoomImageMetaResponse>
+    updateImageOrder(
+            Long roomId,
+            RoomImageOrderRequest request
+    ) {
+        findRoom(roomId);
+
+        List<RoomImage> images =
+                roomImageRepository
+                        .findAllByRoomRoomIdOrderByDisplayOrderAscRoomImageIdAsc(
+                                roomId
+                        );
+
+        List<Long> requestedIds =
+                request.getImageIds();
+
+        if (
+                images.size() !=
+                        requestedIds.size()
+        ) {
+            throw new IllegalArgumentException(
+                    "모든 이미지 ID를 순서대로 전달해 주세요."
+            );
+        }
+
+        Map<Long, RoomImage>
+                imageMap =
+                new HashMap<>();
+
+        for (
+                RoomImage image :
+                images
+        ) {
+            imageMap.put(
+                    image.getRoomImageId(),
+                    image
+            );
+        }
+
+        for (
+                int i = 0;
+                i < requestedIds.size();
+                i++
+        ) {
+            RoomImage image =
+                    imageMap.get(
+                            requestedIds.get(i)
+                    );
+
+            if (image == null) {
+                throw new IllegalArgumentException(
+                        "해당 객실에 속하지 않는 이미지가 포함되어 있습니다."
+                );
+            }
+
+            image.updateDisplayOrder(
+                    i
+            );
+        }
+
+        return requestedIds
+                .stream()
+                .map(imageMap::get)
+                .map(
+                        RoomImageMetaResponse::new
+                )
+                .toList();
+    }
+
+    // 날짜 예약 수량 계산
+    private int getReservedCount(
+            List<Reservation> reservations,
+            LocalDate date
+    ) {
+        int reservedCount = 0;
+
+        for (
+                Reservation reservation :
+                reservations
+        ) {
+            boolean occupied =
+                    !date.isBefore(
+                            reservation.getCheckIn()
+                    ) &&
+                            date.isBefore(
+                                    reservation.getCheckOut()
+                            );
+
+            if (occupied) {
+                reservedCount +=
+                        reservation.getQuantity() == null
+                                ? 1
+                                : reservation.getQuantity();
+            }
+        }
+
+        return reservedCount;
+    }
+
+    // 기간 최소 잔여 수량
+    private int calculateMinimumRemaining(
+            Room room,
+            List<Reservation> reservations,
+            LocalDate checkIn,
+            LocalDate checkOut
+    ) {
+        int minimumRemaining =
+                room.getStockCount();
+
+        LocalDate current =
+                checkIn;
+
+        while (
+                current.isBefore(
+                        checkOut
+                )
+        ) {
+            int reservedCount =
+                    getReservedCount(
+                            reservations,
+                            current
+                    );
+
+            int remaining =
+                    Math.max(
+                            0,
+                            room.getStockCount() -
+                                    reservedCount
+                    );
+
+            minimumRemaining =
+                    Math.min(
+                            minimumRemaining,
+                            remaining
+                    );
+
+            current =
+                    current.plusDays(1);
+        }
+
+        return minimumRemaining;
+    }
+
+    // 재고 감소 검증
+    private void validateStockChange(
+            Room room,
+            int newStockCount
+    ) {
+        List<Reservation> reservations =
+                reservationRepository
+                        .findAllByRoomRoomIdAndStatusNot(
+                                room.getRoomId(),
+                                ReservationStatus.CANCELED
+                        );
+
+        Map<LocalDate, Integer>
+                reservedByDate =
+                new HashMap<>();
+
+        LocalDate today =
+                LocalDate.now();
+
+        for (
+                Reservation reservation :
+                reservations
+        ) {
+            LocalDate current =
+                    reservation
+                            .getCheckIn()
+                            .isBefore(today)
+                            ? today
+                            : reservation.getCheckIn();
+
+            while (
+                    current.isBefore(
+                            reservation.getCheckOut()
+                    )
+            ) {
+                int quantity =
+                        reservation.getQuantity() == null
+                                ? 1
+                                : reservation.getQuantity();
+
+                reservedByDate.merge(
+                        current,
+                        quantity,
+                        Integer::sum
+                );
+
+                current =
+                        current.plusDays(1);
+            }
+        }
+
+        int maximumReserved =
+                reservedByDate
+                        .values()
+                        .stream()
+                        .mapToInt(
+                                Integer::intValue
+                        )
+                        .max()
+                        .orElse(0);
+
+        if (
+                newStockCount <
+                        maximumReserved
+        ) {
+            throw new IllegalArgumentException(
+                    "현재 예약된 수량보다 재고를 적게 설정할 수 없습니다."
+            );
+        }
+    }
+
+    // 이미지 검증
+    private void validateImage(
+            MultipartFile file
+    ) {
         if (
                 file == null ||
                         file.isEmpty()
@@ -274,7 +794,7 @@ public class RoomService {
                         MAX_IMAGE_SIZE
         ) {
             throw new IllegalArgumentException(
-                    "이미지는 10MB 이하만 업로드할 수 있습니다."
+                    "이미지는 한 장당 10MB 이하만 업로드할 수 있습니다."
             );
         }
 
@@ -283,23 +803,70 @@ public class RoomService {
 
         if (
                 contentType == null ||
-                        !contentType.startsWith("image/")
+                        !contentType.startsWith(
+                                "image/"
+                        )
         ) {
             throw new IllegalArgumentException(
                     "이미지 파일만 업로드할 수 있습니다."
             );
         }
+    }
 
-        try {
-            room.updateImage(
-                    file.getBytes(),
-                    contentType
-            );
-        } catch (IOException e) {
-            throw new IllegalStateException(
-                    "이미지 저장에 실패했습니다."
-            );
+    // 이미지 순서 정리
+    private void normalizeImageOrder(
+            Long roomId
+    ) {
+        List<RoomImage> images =
+                roomImageRepository
+                        .findAllByRoomRoomIdOrderByDisplayOrderAscRoomImageIdAsc(
+                                roomId
+                        );
+
+        for (
+                int i = 0;
+                i < images.size();
+                i++
+        ) {
+            images
+                    .get(i)
+                    .updateDisplayOrder(i);
         }
+    }
+
+    private boolean hasImage(
+            Room room
+    ) {
+        return roomImageRepository
+                .existsByRoomRoomId(
+                        room.getRoomId()
+                );
+    }
+
+    private RoomImage findRoomImage(
+            Long roomId,
+            Long imageId
+    ) {
+        return roomImageRepository
+                .findByRoomImageIdAndRoomRoomId(
+                        imageId,
+                        roomId
+                )
+                .orElseThrow(
+                        () ->
+                                new IllegalArgumentException(
+                                        "객실 이미지를 찾을 수 없습니다."
+                                )
+                );
+    }
+
+    private RoomImageResponse toImageResponse(
+            RoomImage roomImage
+    ) {
+        return new RoomImageResponse(
+                roomImage.getImageData(),
+                roomImage.getContentType()
+        );
     }
 
     // 객실 조회
@@ -307,7 +874,9 @@ public class RoomService {
             Long roomId
     ) {
         return roomRepository
-                .findById(roomId)
+                .findByRoomIdAndActiveTrue(
+                        roomId
+                )
                 .orElseThrow(
                         () ->
                                 new IllegalArgumentException(
@@ -316,7 +885,7 @@ public class RoomService {
                 );
     }
 
-    // 예약 날짜 검증
+    // 날짜 검증
     private void validateDate(
             LocalDate checkIn,
             LocalDate checkOut
@@ -330,7 +899,11 @@ public class RoomService {
             );
         }
 
-        if (!checkOut.isAfter(checkIn)) {
+        if (
+                !checkOut.isAfter(
+                        checkIn
+                )
+        ) {
             throw new IllegalArgumentException(
                     "체크아웃 날짜는 체크인 날짜보다 이후여야 합니다."
             );

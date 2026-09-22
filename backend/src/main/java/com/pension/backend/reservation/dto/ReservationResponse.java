@@ -18,20 +18,51 @@ public class ReservationResponse {
     private final LocalDate checkIn;
     private final LocalDate checkOut;
     private final Integer guestCount;
+
+    @Schema(
+            description = "예약 수량",
+            example = "2"
+    )
+    private final Integer quantity;
+
     private final Long totalPrice;
     private final Long depositAmount;
     private final ReservationStatus status;
 
-    public ReservationResponse(Reservation reservation) {
-        this.reservationNumber = reservation.getReservationNumber();
-        this.roomId = reservation.getRoom().getRoomId();
-        this.roomName = reservation.getRoom().getName();
-        this.guestName = reservation.getGuestName();
-        this.checkIn = reservation.getCheckIn();
-        this.checkOut = reservation.getCheckOut();
-        this.guestCount = reservation.getGuestCount();
-        this.totalPrice = reservation.getTotalPrice();
-        this.depositAmount = reservation.getDepositAmount();
-        this.status = reservation.getStatus();
+    public ReservationResponse(
+            Reservation reservation
+    ) {
+        this.reservationNumber =
+                reservation.getReservationNumber();
+
+        this.roomId =
+                reservation.getRoom().getRoomId();
+
+        this.roomName =
+                reservation.getRoom().getName();
+
+        this.guestName =
+                reservation.getGuestName();
+
+        this.checkIn =
+                reservation.getCheckIn();
+
+        this.checkOut =
+                reservation.getCheckOut();
+
+        this.guestCount =
+                reservation.getGuestCount();
+
+        this.quantity =
+                reservation.getQuantity();
+
+        this.totalPrice =
+                reservation.getTotalPrice();
+
+        this.depositAmount =
+                reservation.getDepositAmount();
+
+        this.status =
+                reservation.getStatus();
     }
 }

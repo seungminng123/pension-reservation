@@ -9,16 +9,19 @@ import lombok.Getter;
 @Schema(description = "객실 예약 가능 여부 확인 응답")
 public class RoomAvailabilityCheckResponse {
 
-    @Schema(
-            description = "예약 가능 여부",
-            example = "true"
-    )
+    @Schema(example = "true")
     private boolean available;
 
     @Schema(
-            description = "선택한 숙박 기간의 총 금액. 예약 불가능한 경우 null",
-            example = "750000",
+            description = "수량까지 적용한 총 가격",
+            example = "220000",
             nullable = true
     )
     private Long totalPrice;
+
+    @Schema(
+            description = "선택 기간 중 가장 적은 잔여 수량",
+            example = "3"
+    )
+    private Integer remainingCount;
 }

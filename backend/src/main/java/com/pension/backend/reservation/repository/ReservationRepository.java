@@ -21,34 +21,35 @@ public interface ReservationRepository
               AND r.checkIn < :endDate
               AND r.checkOut > :startDate
             """)
-    List<Reservation> findOverlappingReservations(
-            @Param("roomId") Long roomId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
-            @Param("canceledStatus") ReservationStatus canceledStatus
+    List<Reservation>
+    findOverlappingReservations(
+            @Param("roomId")
+            Long roomId,
+
+            @Param("startDate")
+            LocalDate startDate,
+
+            @Param("endDate")
+            LocalDate endDate,
+
+            @Param("canceledStatus")
+            ReservationStatus canceledStatus
     );
 
-    @Query("""
-            SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END
-            FROM Reservation r
-            WHERE r.room.roomId = :roomId
-              AND r.status <> :canceledStatus
-              AND r.checkIn < :checkOut
-              AND r.checkOut > :checkIn
-            """)
-    boolean existsOverlappingReservation(
-            @Param("roomId") Long roomId,
-            @Param("checkIn") LocalDate checkIn,
-            @Param("checkOut") LocalDate checkOut,
-            @Param("canceledStatus") ReservationStatus canceledStatus
-    );
-
-    Optional<Reservation> findByReservationNumberAndPhoneNumber(
+    Optional<Reservation>
+    findByReservationNumberAndPhoneNumber(
             String reservationNumber,
             String phoneNumber
     );
 
-    List<Reservation> findAllByStatusOrderByCreatedAtDesc(
+    List<Reservation>
+    findAllByStatusOrderByCreatedAtDesc(
+            ReservationStatus status
+    );
+
+    List<Reservation>
+    findAllByRoomRoomIdAndStatusNot(
+            Long roomId,
             ReservationStatus status
     );
 }

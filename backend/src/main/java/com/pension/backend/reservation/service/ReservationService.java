@@ -27,9 +27,14 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ReservationService {
 
-    private final ReservationRepository reservationRepository;
-    private final RoomRepository roomRepository;
-    private final RoomDailyPriceService roomDailyPriceService;
+    private final ReservationRepository
+            reservationRepository;
+
+    private final RoomRepository
+            roomRepository;
+
+    private final RoomDailyPriceService
+            roomDailyPriceService;
 
     @Value("${reservation.deposit-amount}")
     private Long depositAmount;
@@ -39,13 +44,11 @@ public class ReservationService {
     public ReservationResponse createReservation(
             ReservationCreateRequest request
     ) {
-
         validateDate(
                 request.getCheckIn(),
                 request.getCheckOut()
         );
 
-        // 객실 조회 및 동시 예약 방지
         Room room =
                 roomRepository
                         .findByIdForUpdate(
@@ -58,7 +61,12 @@ public class ReservationService {
                                         )
                         );
 
-        // 예약 인원 확인
+        if (!room.isSaleEnabled()) {
+            throw new IllegalStateException(
+                    "현재 판매 중지된 상품입니다."
+            );
+        }
+
         if (
                 request.getGuestCount() == null ||
                         request.getGuestCount() < 1
@@ -69,38 +77,73 @@ public class ReservationService {
         }
 
         if (
-                request.getGuestCount()
-                        > room.getMaxGuests()
+                request.getGuestCount() >
+                        room.getMaxGuests()
         ) {
             throw new IllegalArgumentException(
                     "최대 예약 가능 인원을 초과했습니다."
             );
         }
 
-        // 예약 중복 확인
-        boolean hasOverlap =
+        int quantity =
+                request.getQuantity() == null
+                        ? 1
+                        : request.getQuantity();
+
+        if (quantity < 1) {
+            throw new IllegalArgumentException(
+                    "예약 수량은 1개 이상이어야 합니다."
+            );
+        }
+
+        if (
+                quantity >
+                        room.getStockCount()
+        ) {
+            throw new IllegalArgumentException(
+                    "전체 재고 수량을 초과했습니다."
+            );
+        }
+
+        List<Reservation> reservations =
                 reservationRepository
-                        .existsOverlappingReservation(
+                        .findOverlappingReservations(
                                 room.getRoomId(),
                                 request.getCheckIn(),
                                 request.getCheckOut(),
                                 ReservationStatus.CANCELED
                         );
 
-        if (hasOverlap) {
+        int minimumRemaining =
+                calculateMinimumRemaining(
+                        room,
+                        reservations,
+                        request.getCheckIn(),
+                        request.getCheckOut()
+                );
+
+        if (
+                minimumRemaining <
+                        quantity
+        ) {
             throw new IllegalStateException(
-                    "이미 예약된 날짜가 포함되어 있습니다."
+                    "선택한 기간의 잔여 수량이 부족합니다."
             );
         }
 
-        // 날짜별 가격으로 총 금액 계산
-        long totalPrice =
+        long oneUnitPrice =
                 roomDailyPriceService
                         .calculateTotalPrice(
                                 room,
                                 request.getCheckIn(),
                                 request.getCheckOut()
                         );
+
+        long totalPrice =
+                Math.multiplyExact(
+                        oneUnitPrice,
+                        quantity
+                );
 
         String reservationNumber =
                 generateReservationNumber();
@@ -113,6 +156,7 @@ public class ReservationService {
                         request.getPhoneNumber(),
                         request.getDepositorName(),
                         request.getGuestCount(),
+                        quantity,
                         request.getCheckIn(),
                         request.getCheckOut(),
                         totalPrice,
@@ -134,7 +178,6 @@ public class ReservationService {
             String reservationNumber,
             String phoneNumber
     ) {
-
         Reservation reservation =
                 reservationRepository
                         .findByReservationNumberAndPhoneNumber(
@@ -159,7 +202,6 @@ public class ReservationService {
             String reservationNumber,
             String phoneNumber
     ) {
-
         Reservation reservation =
                 reservationRepository
                         .findByReservationNumberAndPhoneNumber(
@@ -180,20 +222,18 @@ public class ReservationService {
         );
     }
 
-    // 관리자 예약 목록 조회
-    public List<AdminReservationListResponse> getAdminReservations(
+    // 관리자 예약 목록
+    public List<AdminReservationListResponse>
+    getAdminReservations(
             ReservationStatus status
     ) {
-
         List<Reservation> reservations;
 
         if (status == null) {
-
             reservations =
-                    reservationRepository.findAll();
-
+                    reservationRepository
+                            .findAll();
         } else {
-
             reservations =
                     reservationRepository
                             .findAllByStatusOrderByCreatedAtDesc(
@@ -216,11 +256,11 @@ public class ReservationService {
                 .toList();
     }
 
-    // 관리자 예약 상세 조회
-    public AdminReservationDetailResponse getAdminReservation(
+    // 관리자 예약 상세
+    public AdminReservationDetailResponse
+    getAdminReservation(
             Long reservationId
     ) {
-
         Reservation reservation =
                 findReservation(
                         reservationId
@@ -231,12 +271,12 @@ public class ReservationService {
         );
     }
 
-    // 관리자 예약 확정
+    // 예약 확정
     @Transactional
-    public ReservationStatusResponse confirmReservation(
+    public ReservationStatusResponse
+    confirmReservation(
             Long reservationId
     ) {
-
         Reservation reservation =
                 findReservation(
                         reservationId
@@ -249,12 +289,12 @@ public class ReservationService {
         );
     }
 
-    // 관리자 예약 취소
+    // 예약 취소
     @Transactional
-    public ReservationStatusResponse cancelReservation(
+    public ReservationStatusResponse
+    cancelReservation(
             Long reservationId
     ) {
-
         Reservation reservation =
                 findReservation(
                         reservationId
@@ -267,13 +307,74 @@ public class ReservationService {
         );
     }
 
+    // 기간 중 최소 잔여 수량
+    private int calculateMinimumRemaining(
+            Room room,
+            List<Reservation> reservations,
+            LocalDate checkIn,
+            LocalDate checkOut
+    ) {
+        int minimumRemaining =
+                room.getStockCount();
+
+        LocalDate current =
+                checkIn;
+
+        while (
+                current.isBefore(
+                        checkOut
+                )
+        ) {
+            int reservedCount = 0;
+
+            for (
+                    Reservation reservation :
+                    reservations
+            ) {
+                boolean occupied =
+                        !current.isBefore(
+                                reservation.getCheckIn()
+                        ) &&
+                                current.isBefore(
+                                        reservation.getCheckOut()
+                                );
+
+                if (occupied) {
+                    reservedCount +=
+                            reservation.getQuantity() == null
+                                    ? 1
+                                    : reservation.getQuantity();
+                }
+            }
+
+            int remaining =
+                    Math.max(
+                            0,
+                            room.getStockCount() -
+                                    reservedCount
+                    );
+
+            minimumRemaining =
+                    Math.min(
+                            minimumRemaining,
+                            remaining
+                    );
+
+            current =
+                    current.plusDays(1);
+        }
+
+        return minimumRemaining;
+    }
+
     // 예약 단건 조회
     private Reservation findReservation(
             Long reservationId
     ) {
-
         return reservationRepository
-                .findById(reservationId)
+                .findById(
+                        reservationId
+                )
                 .orElseThrow(
                         () ->
                                 new IllegalArgumentException(
@@ -282,12 +383,11 @@ public class ReservationService {
                 );
     }
 
-    // 예약 날짜 검증
+    // 날짜 검증
     private void validateDate(
             LocalDate checkIn,
             LocalDate checkOut
     ) {
-
         if (
                 checkIn == null ||
                         checkOut == null
@@ -297,7 +397,11 @@ public class ReservationService {
             );
         }
 
-        if (!checkOut.isAfter(checkIn)) {
+        if (
+                !checkOut.isAfter(
+                        checkIn
+                )
+        ) {
             throw new IllegalArgumentException(
                     "체크아웃 날짜는 체크인 날짜보다 이후여야 합니다."
             );
@@ -316,21 +420,27 @@ public class ReservationService {
 
     // 예약번호 생성
     private String generateReservationNumber() {
-
         String timestamp =
                 LocalDateTime
                         .now()
                         .format(
-                                DateTimeFormatter.ofPattern(
-                                        "yyyyMMddHHmmss"
-                                )
+                                DateTimeFormatter
+                                        .ofPattern(
+                                                "yyyyMMddHHmmss"
+                                        )
                         );
 
         String random =
                 UUID.randomUUID()
                         .toString()
-                        .replace("-", "")
-                        .substring(0, 6)
+                        .replace(
+                                "-",
+                                ""
+                        )
+                        .substring(
+                                0,
+                                6
+                        )
                         .toUpperCase();
 
         return "R"

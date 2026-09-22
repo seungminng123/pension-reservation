@@ -8,34 +8,71 @@ import lombok.Getter;
 @Schema(description = "전체 객실 조회 응답")
 public class RoomListResponse {
 
-    @Schema(description = "객실 ID", example = "1")
+    @Schema(example = "1")
     private final Long roomId;
 
-    @Schema(description = "객실 타입", example = "STANDARD")
+    @Schema(example = "PYEONGSANG")
     private final String type;
 
-    @Schema(description = "객실명", example = "101호")
+    @Schema(example = "대형 평상")
     private final String name;
 
-    @Schema(description = "1박 기본 가격", example = "120000")
+    @Schema(example = "50000")
     private final Long price;
 
-    @Schema(description = "최대 인원", example = "4")
+    @Schema(example = "6")
     private final Integer maxGuests;
 
-    @Schema(description = "기준 인원", example = "2")
+    @Schema(example = "4")
     private final Integer guestCount;
 
-    @Schema(description = "객실 이미지 존재 여부", example = "true")
+    @Schema(
+            description = "전체 재고 수량",
+            example = "8"
+    )
+    private final Integer stockCount;
+
+    @Schema(
+            description = "판매 여부",
+            example = "true"
+    )
+    private final boolean saleEnabled;
+
+    @Schema(
+            description = "이미지 존재 여부",
+            example = "true"
+    )
     private final boolean hasImage;
 
-    public RoomListResponse(Room room) {
-        this.roomId = room.getRoomId();
-        this.type = room.getType();
-        this.name = room.getName();
-        this.price = room.getPrice();
-        this.maxGuests = room.getMaxGuests();
-        this.guestCount = room.getGuestCount();
-        this.hasImage = room.getImageData() != null;
+    public RoomListResponse(
+            Room room,
+            boolean hasImage
+    ) {
+        this.roomId =
+                room.getRoomId();
+
+        this.type =
+                room.getType();
+
+        this.name =
+                room.getName();
+
+        this.price =
+                room.getPrice();
+
+        this.maxGuests =
+                room.getMaxGuests();
+
+        this.guestCount =
+                room.getGuestCount();
+
+        this.stockCount =
+                room.getStockCount();
+
+        this.saleEnabled =
+                room.isSaleEnabled();
+
+        this.hasImage =
+                hasImage;
     }
 }

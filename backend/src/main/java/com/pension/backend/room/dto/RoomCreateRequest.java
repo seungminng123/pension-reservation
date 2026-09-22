@@ -11,28 +11,41 @@ import lombok.Getter;
 public class RoomCreateRequest {
 
     @NotBlank
-    @Schema(example = "STANDARD")
+    @Schema(example = "PYEONGSANG")
     private String type;
 
     @NotBlank
-    @Schema(example = "101호")
+    @Schema(example = "대형 평상")
     private String name;
 
-    @Schema(example = "기본 객실입니다.")
+    @Schema(example = "계곡 앞 대형 평상입니다.")
     private String description;
 
     @NotNull
     @Positive
-    @Schema(example = "120000")
+    @Schema(example = "50000")
     private Long price;
 
     @NotNull
     @Positive
-    @Schema(example = "4")
+    @Schema(example = "6")
     private Integer maxGuests;
 
     @NotNull
     @Positive
-    @Schema(example = "2")
+    @Schema(example = "4")
     private Integer guestCount;
+
+    @Positive
+    @Schema(
+            description = "전체 재고 수량",
+            example = "8"
+    )
+    private Integer stockCount = 1;
+
+    @Schema(
+            description = "판매 여부",
+            example = "true"
+    )
+    private Boolean saleEnabled = true;
 }
