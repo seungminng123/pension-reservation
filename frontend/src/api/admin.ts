@@ -59,7 +59,20 @@ export const getAdminReservation = async (reservationId: number) => {
 
   return response.data;
 };
+// 관리자 예약 메모 수정
+export const updateAdminReservationMemo = async (
+  reservationId: number,
+  memo: string,
+) => {
+  const response = await api.patch<AdminReservationDetail>(
+    `/api/v1/admin/reservations/${reservationId}/memo`,
+    {
+      memo,
+    },
+  );
 
+  return response.data;
+};
 // 예약 확정
 export const confirmAdminReservation = async (
   reservationId: number,

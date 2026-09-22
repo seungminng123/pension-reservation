@@ -29,6 +29,8 @@ export type AdminReservationDetail = {
   roomType: RoomType;
   paymentMethod: PaymentMethod | null;
   confirmedAt: string | null;
+  adminMemo: string | null;
+
   reservationId: number;
   reservationNumber: string;
   guestName: string;

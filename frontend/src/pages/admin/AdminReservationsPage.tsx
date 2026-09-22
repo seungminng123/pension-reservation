@@ -4,6 +4,7 @@ import {
   Check,
   CreditCard,
   List,
+  Save,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -14,6 +15,7 @@ import {
   confirmAdminReservation,
   getAdminReservation,
   getAdminReservations,
+  updateAdminReservationMemo,
 } from "@/api/admin";
 
 import AdminReservationCalendar from "@/components/admin/AdminReservationCalendar";
@@ -44,6 +46,9 @@ export default function AdminReservationsPage() {
   );
 
   const [selectingPayment, setSelectingPayment] = useState(false);
+
+  // null이면 서버에 저장된 메모를 그대로 사용
+  const [adminMemo, setAdminMemo] = useState<string | null>(null);
 
   const {
     data: reservations,
@@ -83,6 +88,7 @@ export default function AdminReservationsPage() {
     );
   };
 
+  // 예약 확정
   const confirmMutation = useMutation({
     mutationFn: ({
       reservationId,
@@ -100,20 +106,63 @@ export default function AdminReservationsPage() {
     },
   });
 
+  // 예약 취소
   const cancelMutation = useMutation({
     mutationFn: cancelAdminReservation,
 
     onSuccess: refreshReservations,
   });
 
+  // 관리자 메모 저장
+  const memoMutation = useMutation({
+    mutationFn: ({
+      reservationId,
+      memo,
+    }: {
+      reservationId: number;
+      memo: string;
+    }) => updateAdminReservationMemo(reservationId, memo),
+
+    onSuccess: (updatedReservation) => {
+      queryClient.setQueryData(
+        ["adminReservation", updatedReservation.reservationId],
+        updatedReservation,
+      );
+
+      // 저장 후 서버에서 받은 메모 사용
+      setAdminMemo(null);
+    },
+  });
+
+  // 예약 선택
+  const selectReservation = (reservationId: number) => {
+    setAdminMemo(null);
+
+    memoMutation.reset();
+    confirmMutation.reset();
+    cancelMutation.reset();
+
+    setSelectedId(reservationId);
+  };
+
+  // 예약 상세 닫기
   const closeDetail = () => {
-    if (confirmMutation.isPending || cancelMutation.isPending) {
+    if (
+      confirmMutation.isPending ||
+      cancelMutation.isPending ||
+      memoMutation.isPending
+    ) {
       return;
     }
 
     setSelectedId(null);
     setSelectingPayment(false);
     setPaymentMethod(null);
+    setAdminMemo(null);
+
+    confirmMutation.reset();
+    cancelMutation.reset();
+    memoMutation.reset();
   };
 
   const formatSchedule = (
@@ -127,6 +176,15 @@ export default function AdminReservationsPage() {
 
     return `${checkIn} ~ ${checkOut}`;
   };
+
+  // DB에 저장된 메모
+  const savedMemo = selectedReservation?.adminMemo ?? "";
+
+  // 수정 중인 값이 없으면 서버 메모 사용
+  const memoValue = adminMemo ?? savedMemo;
+
+  // 실제로 내용이 바뀐 경우에만 저장 버튼 활성화
+  const memoChanged = memoValue !== savedMemo;
 
   return (
     <div>
@@ -171,7 +229,7 @@ export default function AdminReservationsPage() {
       {/* 예약 캘린더 */}
       {activeTab === "CALENDAR" && (
         <div className="mt-6">
-          <AdminReservationCalendar onSelect={setSelectedId} />
+          <AdminReservationCalendar onSelect={selectReservation} />
         </div>
       )}
 
@@ -216,7 +274,7 @@ export default function AdminReservationsPage() {
                 <button
                   key={reservation.reservationId}
                   type="button"
-                  onClick={() => setSelectedId(reservation.reservationId)}
+                  onClick={() => selectReservation(reservation.reservationId)}
                   className="flex w-full min-w-0 flex-col items-start justify-between gap-3 border-b p-4 text-left transition last:border-b-0 hover:bg-gray-50 sm:flex-row sm:items-center sm:p-5"
                 >
                   <div className="min-w-0">
@@ -274,7 +332,11 @@ export default function AdminReservationsPage() {
       {selectedReservation && (
         <Modal
           title="예약 상세"
-          busy={confirmMutation.isPending || cancelMutation.isPending}
+          busy={
+            confirmMutation.isPending ||
+            cancelMutation.isPending ||
+            memoMutation.isPending
+          }
           onClose={closeDetail}
         >
           <div className="grid gap-5 sm:grid-cols-2">
@@ -391,6 +453,67 @@ export default function AdminReservationsPage() {
             </div>
           )}
 
+          {/* 관리자 메모 */}
+          <div className="mt-6 border-t pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold">관리자 메모</h3>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  관리자만 확인할 수 있는 메모입니다.
+                </p>
+              </div>
+
+              <span className="shrink-0 text-xs text-gray-400">
+                {memoValue.length} / 500
+              </span>
+            </div>
+
+            <textarea
+              value={memoValue}
+              onChange={(event) => {
+                setAdminMemo(event.target.value.slice(0, 500));
+
+                memoMutation.reset();
+              }}
+              maxLength={500}
+              rows={4}
+              placeholder="예: 차량 2대, 늦은 체크인 예정"
+              className="mt-3 w-full resize-none rounded-xl border p-3 text-sm outline-none transition focus:border-black"
+            />
+
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                disabled={memoMutation.isPending || !memoChanged}
+                onClick={() =>
+                  memoMutation.mutate({
+                    reservationId: selectedReservation.reservationId,
+
+                    memo: memoValue,
+                  })
+                }
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-black px-5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                <Save size={18} />
+
+                {memoMutation.isPending ? "저장 중..." : "메모 저장"}
+              </button>
+            </div>
+
+            {memoMutation.isSuccess && (
+              <p className="mt-2 text-right text-xs text-green-600">
+                메모가 저장되었습니다.
+              </p>
+            )}
+
+            {memoMutation.isError && (
+              <p className="mt-2 text-right text-xs text-red-500">
+                메모 저장에 실패했습니다.
+              </p>
+            )}
+          </div>
+
           {/* 결제수단 선택 */}
           {selectedReservation.status === "PENDING" && selectingPayment && (
             <div className="mt-6 rounded-2xl bg-gray-50 p-4">
@@ -429,6 +552,7 @@ export default function AdminReservationsPage() {
                   type="button"
                   onClick={() => {
                     setSelectingPayment(false);
+
                     setPaymentMethod(null);
                   }}
                   className="min-h-11 rounded-xl border bg-white"
@@ -446,6 +570,7 @@ export default function AdminReservationsPage() {
 
                     confirmMutation.mutate({
                       reservationId: selectedReservation.reservationId,
+
                       paymentMethod,
                     });
                   }}
@@ -477,11 +602,13 @@ export default function AdminReservationsPage() {
                   type="button"
                   onClick={() => {
                     confirmMutation.reset();
+
                     setPaymentMethod(null);
+
                     setSelectingPayment(true);
                   }}
-                  disabled={cancelMutation.isPending}
-                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-black px-4 text-white"
+                  disabled={cancelMutation.isPending || memoMutation.isPending}
+                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-black px-4 text-white disabled:bg-gray-300"
                 >
                   <Check size={20} />
                   입금 확인 · 예약 확정
@@ -495,11 +622,14 @@ export default function AdminReservationsPage() {
                     cancelMutation.mutate(selectedReservation.reservationId)
                   }
                   disabled={
-                    confirmMutation.isPending || cancelMutation.isPending
+                    confirmMutation.isPending ||
+                    cancelMutation.isPending ||
+                    memoMutation.isPending
                   }
-                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500 px-4 text-red-500"
+                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500 px-4 text-red-500 disabled:opacity-50"
                 >
                   <X size={20} />
+
                   {cancelMutation.isPending ? "취소 중..." : "예약 취소"}
                 </button>
               )}

@@ -1,5 +1,6 @@
-﻿import { useEffect, useRef, type ReactNode } from "react";
+﻿import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
+
 export default function Modal({
   title,
   children,
@@ -12,30 +13,65 @@ export default function Modal({
   busy?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+
   useEffect(() => {
     const dialog = ref.current;
     const previous = document.activeElement;
     const overflow = document.body.style.overflow;
+
     dialog?.showModal();
+
     document.body.style.overflow = "hidden";
+
     return () => {
       dialog?.close();
+
       document.body.style.overflow = overflow;
-      if (previous instanceof HTMLElement) previous.focus();
+
+      if (previous instanceof HTMLElement) {
+        previous.focus();
+      }
     };
   }, []);
+
+  // 모달 바깥 배경 클릭 시 닫기
+  const handleBackdropClick = (event: MouseEvent<HTMLDialogElement>) => {
+    if (busy) {
+      return;
+    }
+
+    const dialog = event.currentTarget;
+
+    const rect = dialog.getBoundingClientRect();
+
+    const clickedOutside =
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom;
+
+    if (clickedOutside) {
+      onClose();
+    }
+  };
+
   return (
     <dialog
       ref={ref}
       aria-label={title}
+      onClick={handleBackdropClick}
       onCancel={(event) => {
         event.preventDefault();
-        if (!busy) onClose();
+
+        if (!busy) {
+          onClose();
+        }
       }}
       className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-3xl overflow-y-auto rounded-2xl border bg-white p-4 text-gray-900 backdrop:bg-black/50 sm:p-6"
     >
       <div className="mb-5 flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold">{title}</h2>
+
         <button
           type="button"
           autoFocus
@@ -47,6 +83,7 @@ export default function Modal({
           <X size={20} />
         </button>
       </div>
+
       {children}
     </dialog>
   );
