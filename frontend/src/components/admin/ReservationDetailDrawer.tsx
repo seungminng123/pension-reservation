@@ -38,7 +38,6 @@ export default function ReservationDetailDrawer({
       [
         "adminReservations",
         "adminReservation",
-        "adminReservationDetails",
         "adminReservationCalendar",
         "adminReservationsByDate",
         "adminSettlements",
@@ -64,10 +63,9 @@ export default function ReservationDetailDrawer({
   const save = useMutation({
     mutationFn: (value: string) =>
       updateAdminReservationMemo(reservationId, value),
-    onSuccess: async (updated) => {
+    onSuccess: (updated) => {
       client.setQueryData(["adminReservation", reservationId], updated);
       setMemo(null);
-      await client.invalidateQueries({ queryKey: ["adminReservationDetails"] });
     },
   });
   const busy = update.isPending || save.isPending;
@@ -255,7 +253,7 @@ export default function ReservationDetailDrawer({
                   disabled={busy}
                   aria-pressed={payment === method}
                   onClick={() => setPayment(method)}
-                  className={`flex min-h-14 items-center justify-center gap-2 rounded-lg border ${payment === method ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300"}`}
+                  className={`flex min-h-14 items-center justify-center gap-2 rounded-lg border ${payment === method ? "border-slate-500 bg-slate-100 text-slate-900 font-semibold" : "border-slate-300"}`}
                 >
                   {method === "CARD" ? (
                     <CreditCard size={18} />

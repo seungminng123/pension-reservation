@@ -130,7 +130,7 @@ function PricingForm({
     numericPrice > 0;
   const job = (kind: PriceJob["kind"]): PriceJob => ({
     ids: selected.map((room) => room.roomId),
-    dates: [...dates],
+    dates: [...dates].sort(),
     kind,
     price: numericPrice,
   });
@@ -158,7 +158,7 @@ function PricingForm({
                   setPreviewId(null);
                   batch.reset();
                 }}
-                className={`min-h-11 rounded-lg border px-4 text-sm ${type === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300"}`}
+                className={`min-h-11 rounded-lg border px-4 text-sm ${type === value ? "border-slate-500 bg-slate-100 text-slate-900 font-semibold" : "border-slate-300"}`}
               >
                 {value === "ROOM" ? "방" : "평상"}
               </button>
@@ -201,7 +201,7 @@ function PricingForm({
                   );
                   batch.reset();
                 }}
-                className={`flex min-h-14 min-w-0 flex-col items-center justify-center rounded-md border px-1 py-2 ${ids.includes(room.roomId) ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white"}`}
+                className={`flex min-h-14 min-w-0 flex-col items-center justify-center rounded-md border px-1 py-2 ${ids.includes(room.roomId) ? "border-slate-500 bg-slate-100 text-slate-900 font-semibold" : "border-slate-300 bg-white"}`}
               >
                 <span className="text-base font-bold">
                   {room.name.match(/\d+/)?.[0] ?? room.name}
@@ -257,7 +257,7 @@ function PricingForm({
                 ))}
               </select>
               <span className="text-xs text-slate-500">
-                표시 요금은 이 시설 기준입니다.
+                이 시설의 기본 가격과 다른 특별 가격만 표시합니다.
               </span>
             </label>
           )}
@@ -295,23 +295,26 @@ function PricingForm({
                   aria-label={`가격 날짜 ${date}`}
                   aria-pressed={active}
                   onClick={() => toggleDate(date)}
-                  className={`flex min-h-20 min-w-0 flex-col items-center justify-center rounded-md border px-0.5 py-2 ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white"}`}
+                  className={`flex min-h-20 min-w-0 flex-col items-center justify-center rounded-md border px-0.5 py-2 ${active ? "border-slate-500 bg-slate-100 text-slate-900 font-semibold" : "border-slate-200 bg-white"}`}
                 >
                   <span className="text-sm font-semibold">
                     {Number(date.slice(-2))}
                   </span>
-                  {preview && !prices.isFetching && !prices.isError && info && (
-                    <>
-                      <span className="mt-1 text-[9px] sm:text-xs">
-                        {info.price.toLocaleString()}원
-                      </span>
-                      <span
-                        className={`mt-1 text-[9px] ${active ? "text-white" : info.customPrice ? "text-blue-700" : "text-slate-500"}`}
-                      >
-                        {info.customPrice ? "특별 가격" : "기본 가격"}
-                      </span>
-                    </>
-                  )}
+                  {preview &&
+                    !prices.isFetching &&
+                    !prices.isError &&
+                    info &&
+                    info.price !==
+                      (prices.data?.defaultPrice ?? preview.price) && (
+                      <>
+                        <span className="mt-1 text-[9px] sm:text-xs">
+                          {info.price.toLocaleString()}원
+                        </span>
+                        <span className={`mt-1 text-[9px] text-blue-700`}>
+                          특별 가격
+                        </span>
+                      </>
+                    )}
                 </button>
               );
             })}

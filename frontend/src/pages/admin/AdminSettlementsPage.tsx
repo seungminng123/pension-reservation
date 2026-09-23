@@ -57,7 +57,7 @@ export default function AdminSettlementsPage() {
             role="tab"
             aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={`min-h-11 rounded-xl border p-3 ${tab === value ? "bg-black text-white" : "bg-white"}`}
+            className={`min-h-11 rounded-xl border p-3 ${tab === value ? "border-slate-500 bg-slate-100 text-slate-900 font-semibold" : "bg-white"}`}
           >
             {value === "daily" ? "일일 정산" : "월별 정산"}
           </button>

@@ -9,6 +9,7 @@ import type {
   AdminLoginResponse,
   AdminReservationDetail,
   AdminReservationListItem,
+  AdminReservationPageResponse,
   AdminRoom,
   AdminRoomCreateRequest,
   AdminRoomMonthlyPrice,
@@ -232,6 +233,32 @@ export const getMonthlySettlement = async (year: number, month: number) => {
   const response = await api.get<MonthlySettlement>(
     "/api/v1/admin/settlements/monthly",
     { params: { year, month } },
+  );
+  return response.data;
+};
+
+export type AdminReservationSearchParams = {
+  q?: string;
+  status?: ReservationStatus;
+  date?: string;
+  page?: number;
+  size?: number;
+};
+
+export const searchAdminReservations = async (
+  params: AdminReservationSearchParams,
+) => {
+  const response = await api.get<AdminReservationPageResponse>(
+    "/api/v1/admin/reservations/search",
+    {
+      params: {
+        ...params,
+        q: params.q?.trim() || undefined,
+        date: params.date || undefined,
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+      },
+    },
   );
   return response.data;
 };

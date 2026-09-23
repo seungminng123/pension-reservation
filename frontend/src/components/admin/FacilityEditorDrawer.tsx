@@ -65,7 +65,6 @@ function FacilityForm({
     name: initial?.name ?? "",
     description: initial?.description ?? "",
     price: initial ? String(initial.price) : "",
-    guestCount: initial ? String(initial.guestCount) : "",
     maxGuests: initial ? String(initial.maxGuests) : "",
     stockCount: initial ? String(initial.stockCount) : "1",
     saleEnabled: initial?.saleEnabled ?? true,
@@ -102,7 +101,8 @@ function FacilityForm({
         ...form,
         name: form.name.trim(),
         price: Number(form.price),
-        guestCount: Number(form.guestCount),
+        // Legacy API requires guestCount; this service only configures maximum capacity.
+        guestCount: Number(form.maxGuests),
         maxGuests: Number(form.maxGuests),
         stockCount: Number(form.stockCount),
       };
@@ -170,16 +170,12 @@ function FacilityForm({
       return;
     }
     if (
-      [form.price, form.guestCount, form.maxGuests, form.stockCount].some(
+      [form.price, form.maxGuests, form.stockCount].some(
         (value) =>
           !value || !Number.isSafeInteger(Number(value)) || Number(value) < 1,
       )
     ) {
       setError("가격, 인원, 재고는 1 이상의 정수로 입력해 주세요.");
-      return;
-    }
-    if (Number(form.guestCount) > Number(form.maxGuests)) {
-      setError("기준 인원은 최대 인원보다 클 수 없습니다.");
       return;
     }
     if (files.some((file) => file.size > 10 * 1024 * 1024)) {
@@ -195,7 +191,6 @@ function FacilityForm({
   const fields = [
     ["name", "시설명", "text"],
     ["price", "기본 가격 (원)", "number"],
-    ["guestCount", "기준 인원", "number"],
     ["maxGuests", "최대 인원", "number"],
     ["stockCount", "재고 수량", "number"],
   ] as const;

@@ -64,10 +64,10 @@ export default function AdminRoomsPage() {
                 type="button"
                 aria-pressed={type === value}
                 onClick={() => setType(value)}
-                className={`min-h-11 rounded-lg border px-4 text-sm font-semibold ${type === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-600"}`}
+                className={`min-h-11 rounded-lg border px-4 text-sm font-semibold ${type === value ? "border-slate-500 bg-slate-100 text-slate-900 font-semibold" : "border-slate-300 bg-white text-slate-600"}`}
               >
-                {value === "ROOM" ? "방" : "평상"}{" "}
-                {data.filter((room) => room.type === value).length}
+                {value === "ROOM" ? "방" : "평상"} (
+                {data.filter((room) => room.type === value).length})
               </button>
             ))}
           </div>
@@ -91,7 +91,7 @@ export default function AdminRoomsPage() {
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  기준 {room.guestCount}명 · 최대 {room.maxGuests}명
+                  최대 {room.maxGuests}명
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   재고 {room.stockCount}개

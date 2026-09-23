@@ -12,6 +12,13 @@ export type AdminLoginResponse = {
 };
 
 export type AdminReservationListItem = {
+  phoneNumber: string;
+  guestCount: number;
+  depositorName: string;
+  roomId: number;
+  totalPrice: number;
+  depositAmount: number;
+  createdAt: string;
   roomType: RoomType;
   paymentMethod: PaymentMethod | null;
   confirmedAt: string | null;
@@ -23,6 +30,16 @@ export type AdminReservationListItem = {
   checkIn: string;
   checkOut: string;
   status: ReservationStatus;
+};
+
+export type AdminReservationPageResponse = {
+  items: AdminReservationListItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
 };
 
 export type AdminReservationDetail = {
