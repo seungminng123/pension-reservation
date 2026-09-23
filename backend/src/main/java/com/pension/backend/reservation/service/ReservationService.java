@@ -12,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
@@ -688,5 +691,74 @@ public class ReservationService {
         return "R"
                 + timestamp
                 + random;
+    }
+    // 관리자 예약 검색
+    public AdminReservationPageResponse
+    searchAdminReservations(
+            String q,
+            ReservationStatus status,
+            LocalDate date,
+            int page,
+            int size
+    ) {
+        if (page < 0) {
+            throw new IllegalArgumentException(
+                    "페이지 번호는 0 이상이어야 합니다."
+            );
+        }
+
+        if (
+                size < 1 ||
+                        size > 100
+        ) {
+            throw new IllegalArgumentException(
+                    "페이지 크기는 1 이상 100 이하여야 합니다."
+            );
+        }
+
+        String keyword =
+                q == null ||
+                        q.trim().isEmpty()
+                        ? null
+                        : q.trim();
+
+        String phoneKeyword =
+                keyword == null
+                        ? null
+                        : keyword.replaceAll(
+                        "\\D",
+                        ""
+                );
+
+        if (
+                phoneKeyword != null &&
+                        phoneKeyword.isEmpty()
+        ) {
+            phoneKeyword = null;
+        }
+
+        PageRequest pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "createdAt"
+                        )
+                );
+
+        Page<Reservation> reservations =
+                reservationRepository
+                        .searchAdminReservations(
+                                keyword,
+                                phoneKeyword,
+                                status,
+                                date,
+                                pageable
+                        );
+
+        return new AdminReservationPageResponse(
+                reservations
+        );
     }
 }

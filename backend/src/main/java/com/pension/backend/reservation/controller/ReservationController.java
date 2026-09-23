@@ -5,14 +5,19 @@ import com.pension.backend.reservation.dto.ReservationCreateRequest;
 import com.pension.backend.reservation.dto.ReservationLookupRequest;
 import com.pension.backend.reservation.dto.ReservationResponse;
 import com.pension.backend.reservation.dto.ReservationStatusResponse;
+import com.pension.backend.reservation.entity.ReservationStatus;
 import com.pension.backend.reservation.service.ReservationService;
+import com.pension.backend.reservation.dto.AdminReservationPageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
@@ -85,6 +90,76 @@ public class ReservationController {
                 .requestCancel(
                         reservationNumber,
                         request.getPhoneNumber()
+                );
+    }
+    // 예약 검색 및 페이지 조회
+    @Operation(
+            summary = "예약 검색 및 페이지 조회",
+            description = """
+                관리자 예약 목록을 검색합니다.
+
+                예약자명, 전화번호, 예약번호 검색과
+                예약 상태, 이용 날짜 필터를 지원합니다.
+
+                이용 날짜는 체크아웃 당일을 제외합니다.
+                결과는 최신 예약순으로 반환됩니다.
+                """
+    )
+    @GetMapping(
+            "/search"
+    )
+    public AdminReservationPageResponse
+    searchReservations(
+
+            @Parameter(
+                    description = "예약자명, 전화번호, 예약번호 검색어",
+                    example = "김승민"
+            )
+            @RequestParam(required = false)
+            String q,
+
+            @Parameter(
+                    description = "예약 상태. 생략 시 전체 상태 조회",
+                    example = "PENDING"
+            )
+            @RequestParam(required = false)
+            ReservationStatus status,
+
+            @Parameter(
+                    description = "이용 날짜",
+                    example = "2026-09-23"
+            )
+            @RequestParam(required = false)
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE
+            )
+            LocalDate date,
+
+            @Parameter(
+                    description = "페이지 번호. 0부터 시작",
+                    example = "0"
+            )
+            @RequestParam(
+                    defaultValue = "0"
+            )
+            int page,
+
+            @Parameter(
+                    description = "페이지당 예약 수. 최대 100",
+                    example = "20"
+            )
+            @RequestParam(
+                    defaultValue = "20"
+            )
+            int size
+    ) {
+        return reservationService
+                .searchAdminReservations(
+                        q,
+                        status,
+                        date,
+                        page,
+                        size
                 );
     }
 }
