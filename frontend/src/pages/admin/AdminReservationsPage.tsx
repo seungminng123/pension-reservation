@@ -1,648 +1,265 @@
-import {
-  Banknote,
-  CalendarDays,
-  Check,
-  CreditCard,
-  List,
-  Save,
-  X,
-} from "lucide-react";
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-
-import {
-  cancelAdminReservation,
-  confirmAdminReservation,
-  getAdminReservation,
-  getAdminReservations,
-  updateAdminReservationMemo,
-} from "@/api/admin";
-
+﻿import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { Search } from "lucide-react";
+import { getAdminReservations } from "@/api/admin";
 import AdminReservationCalendar from "@/components/admin/AdminReservationCalendar";
-import Modal from "@/components/common/Modal";
-
-import type { PaymentMethod, ReservationStatus } from "@/types/reservation";
-
-type AdminReservationTab = "CALENDAR" | "LIST";
-
-const statusLabels: Record<ReservationStatus, string> = {
-  PENDING: "입금 확인 대기",
-  CONFIRMED: "예약 확정",
-  CANCEL_REQUESTED: "취소 요청",
-  CANCELED: "취소 완료",
-};
-
+import ReservationDetailDrawer from "@/components/admin/ReservationDetailDrawer";
+import ReservationStatusBadge from "@/components/admin/ReservationStatusBadge";
+import { QueryError, LoadingRows } from "@/components/admin/QueryFeedback";
+import useAdminReservationDetails from "@/hooks/useAdminReservationDetails";
+import { scheduleLabel } from "@/utils/adminReservation";
+import { isValidDate } from "@/utils/date";
 export default function AdminReservationsPage() {
-  const queryClient = useQueryClient();
-
-  const [activeTab, setActiveTab] = useState<AdminReservationTab>("CALENDAR");
-
-  const [status, setStatus] = useState<ReservationStatus | "ALL">("ALL");
-
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
-    null,
+  const [params, setParams] = useSearchParams();
+  const [selected, setSelected] = useState<number | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const status = params.get("status") ?? "ALL";
+  const date = params.get("date") ?? "";
+  const search = params.get("q") ?? "";
+  const pageValue = Number(params.get("page"));
+  const page = Number.isFinite(pageValue)
+    ? Math.max(1, Math.floor(pageValue))
+    : 1;
+  const setFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    next.delete("page");
+    setParams(next, { replace: true });
+  };
+  const list = useQuery({
+    queryKey: ["adminReservations", "ALL"],
+    queryFn: () => getAdminReservations(),
+    refetchOnWindowFocus: true,
+  });
+  const candidates = (list.data ?? []).filter(
+    (item) =>
+      (status === "ALL" ||
+        (status === "CANCELED"
+          ? item.status === "CANCELED" || item.status === "CANCEL_REQUESTED"
+          : item.status === status)) &&
+      (!isValidDate(date) || (item.checkIn <= date && item.checkOut > date)),
   );
-
-  const [selectingPayment, setSelectingPayment] = useState(false);
-
-  // null이면 서버에 저장된 메모를 그대로 사용
-  const [adminMemo, setAdminMemo] = useState<string | null>(null);
-
-  const {
-    data: reservations,
-    isLoading,
-    isError: listError,
-  } = useQuery({
-    queryKey: ["adminReservations", status],
-    queryFn: () => getAdminReservations(status === "ALL" ? undefined : status),
-    enabled: activeTab === "LIST",
-  });
-
-  const {
-    data: selectedReservation,
-    isLoading: detailLoading,
-    isError: detailError,
-  } = useQuery({
-    queryKey: ["adminReservation", selectedId],
-    queryFn: () => getAdminReservation(selectedId!),
-    enabled: selectedId !== null,
-  });
-
-  const refreshReservations = async () => {
-    await Promise.all(
-      [
-        "adminReservations",
-        "adminReservation",
-        "adminReservationCalendar",
-        "adminReservationsByDate",
-        "adminSettlements",
-        "availableRooms",
-        "roomAvailabilityCheck",
-      ].map((key) =>
-        queryClient.invalidateQueries({
-          queryKey: [key],
-        }),
-      ),
+  const details = useAdminReservationDetails(
+    candidates.map((item) => item.reservationId),
+  );
+  const needle = search.trim().toLocaleLowerCase();
+  const filtered = candidates.filter((item) => {
+    const detail = details.data?.details[item.reservationId];
+    return (
+      !needle ||
+      item.guestName.toLocaleLowerCase().includes(needle) ||
+      item.reservationNumber.toLocaleLowerCase().includes(needle) ||
+      (detail &&
+        (detail.phoneNumber.includes(needle) ||
+          (/^[\d\s+()-]+$/.test(needle) &&
+            !!needle.replace(/\D/g, "") &&
+            detail.phoneNumber
+              .replace(/\D/g, "")
+              .includes(needle.replace(/\D/g, "")))))
     );
-  };
-
-  // 예약 확정
-  const confirmMutation = useMutation({
-    mutationFn: ({
-      reservationId,
-      paymentMethod,
-    }: {
-      reservationId: number;
-      paymentMethod: PaymentMethod;
-    }) => confirmAdminReservation(reservationId, paymentMethod),
-
-    onSuccess: async () => {
-      await refreshReservations();
-
-      setSelectingPayment(false);
-      setPaymentMethod(null);
-    },
   });
-
-  // 예약 취소
-  const cancelMutation = useMutation({
-    mutationFn: cancelAdminReservation,
-
-    onSuccess: refreshReservations,
-  });
-
-  // 관리자 메모 저장
-  const memoMutation = useMutation({
-    mutationFn: ({
-      reservationId,
-      memo,
-    }: {
-      reservationId: number;
-      memo: string;
-    }) => updateAdminReservationMemo(reservationId, memo),
-
-    onSuccess: (updatedReservation) => {
-      queryClient.setQueryData(
-        ["adminReservation", updatedReservation.reservationId],
-        updatedReservation,
-      );
-
-      setAdminMemo(null);
-    },
-  });
-
-  // 예약 선택
-  const selectReservation = (reservationId: number) => {
-    setAdminMemo(null);
-
-    memoMutation.reset();
-    confirmMutation.reset();
-    cancelMutation.reset();
-
-    setSelectedId(reservationId);
-  };
-
-  // 예약 상세 닫기
-  const closeDetail = () => {
-    if (
-      confirmMutation.isPending ||
-      cancelMutation.isPending ||
-      memoMutation.isPending
-    ) {
-      return;
-    }
-
-    setSelectedId(null);
-    setSelectingPayment(false);
-    setPaymentMethod(null);
-    setAdminMemo(null);
-
-    confirmMutation.reset();
-    cancelMutation.reset();
-    memoMutation.reset();
-  };
-
-  const formatSchedule = (
-    roomType: "ROOM" | "PYEONGSANG",
-    checkIn: string,
-    checkOut: string,
-  ) => {
-    if (roomType === "PYEONGSANG") {
-      return `${checkIn} · 하루 이용`;
-    }
-
-    return `${checkIn} ~ ${checkOut}`;
-  };
-
-  // DB에 저장된 메모
-  const savedMemo = selectedReservation?.adminMemo ?? "";
-
-  // 수정 중인 값이 없으면 서버 메모 사용
-  const memoValue = adminMemo ?? savedMemo;
-
-  // 실제로 내용이 바뀐 경우에만 저장 버튼 활성화
-  const memoChanged = memoValue !== savedMemo;
-
+  const totalPages = Math.max(1, Math.ceil(filtered.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const rows = filtered.slice((currentPage - 1) * 20, currentPage * 20);
+  const pendingDetails = candidates.length > 0 && details.isFetching;
   return (
-    <div>
-      {/* 헤더 */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold">예약 관리</h2>
-
-          <p className="mt-2 text-sm text-gray-500">
-            예약 현황을 확인하고 예약을 확정하거나 취소할 수 있습니다.
+          <h2 className="text-2xl font-bold tracking-tight">예약 관리</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            검색과 필터로 예약을 찾고 상세 패널에서 처리하세요.
           </p>
         </div>
-
-        <Link
-          to="/?from=admin"
-          className="shrink-0 rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
-        >
-          예약 추가
-        </Link>
-      </div>
-
-      {/* 탭 */}
-      <div className="mt-6 grid grid-cols-2 rounded-xl bg-gray-100 p-1">
         <button
           type="button"
-          onClick={() => setActiveTab("CALENDAR")}
-          className={`flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition ${
-            activeTab === "CALENDAR"
-              ? "bg-white text-black shadow-sm"
-              : "text-gray-500"
-          }`}
+          aria-expanded={calendarOpen}
+          onClick={() => setCalendarOpen(!calendarOpen)}
+          className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"
         >
-          <CalendarDays size={18} />
-          예약 캘린더
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("LIST")}
-          className={`flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition ${
-            activeTab === "LIST"
-              ? "bg-white text-black shadow-sm"
-              : "text-gray-500"
-          }`}
-        >
-          <List size={18} />
-          전체 예약
+          {calendarOpen ? "월간 달력 닫기" : "월간 달력 보기"}
         </button>
       </div>
-
-      {/* 예약 캘린더 */}
-      {activeTab === "CALENDAR" && (
-        <div className="mt-6">
-          <AdminReservationCalendar onSelect={selectReservation} />
+      {calendarOpen && <AdminReservationCalendar onSelect={setSelected} />}
+      <section
+        aria-label="예약 검색 및 필터"
+        className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <label className="relative flex-1">
+            <Search
+              className="absolute left-3 top-3 text-slate-400"
+              size={18}
+            />
+            <input
+              aria-label="예약자명, 전화번호, 예약번호 검색"
+              value={search}
+              onChange={(event) => setFilter("q", event.target.value)}
+              placeholder="예약자명 · 전화번호 · 예약번호"
+              className="min-h-11 w-full rounded-lg border border-slate-300 py-2 pl-10 pr-3 text-sm"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            이용일
+            <input
+              aria-label="이용일 필터"
+              type="date"
+              value={date}
+              onChange={(event) => setFilter("date", event.target.value)}
+              className="min-h-11 min-w-0 rounded-lg border border-slate-300 px-2"
+            />
+          </label>
         </div>
-      )}
-
-      {/* 전체 예약 */}
-      {activeTab === "LIST" && (
-        <section className="mt-6">
-          <div className="mb-4 flex justify-end">
-            <select
-              value={status}
-              onChange={(event) =>
-                setStatus(event.target.value as ReservationStatus | "ALL")
-              }
-              className="min-h-11 w-full rounded-lg border bg-white px-4 py-2 sm:w-auto"
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            ["ALL", "전체"],
+            ["PENDING", "입금 확인 대기"],
+            ["CONFIRMED", "예약 확정"],
+            ["CANCELED", "취소"],
+            ["CANCEL_REQUESTED", "취소 요청"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={status === value}
+              onClick={() => setFilter("status", value)}
+              className={`min-h-10 rounded-lg border px-3 text-sm ${status === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-600"}`}
             >
-              <option value="ALL">전체 예약</option>
-
-              <option value="PENDING">입금 확인 대기</option>
-
-              <option value="CONFIRMED">예약 확정</option>
-
-              <option value="CANCEL_REQUESTED">취소 요청</option>
-
-              <option value="CANCELED">취소 완료</option>
-            </select>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border bg-white">
-            {isLoading ? (
-              <p className="p-6 text-sm text-gray-500">
-                예약 목록을 불러오는 중입니다.
-              </p>
-            ) : listError ? (
-              <p role="alert" className="p-6 text-sm text-red-500">
-                예약 정보를 불러오지 못했습니다.
-              </p>
-            ) : !reservations?.length ? (
-              <div className="p-12 text-center text-gray-500">
-                예약 내역이 없습니다.
-              </div>
-            ) : (
-              reservations.map((reservation) => (
+              {label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setParams({}, { replace: true })}
+            className="ml-auto min-h-10 px-2 text-sm text-slate-500 underline"
+          >
+            초기화
+          </button>
+        </div>
+      </section>
+      {list.isError && <QueryError onRetry={() => void list.refetch()} />}
+      {(details.data?.failed.length ?? 0) > 0 && (
+        <QueryError
+          message="일부 예약의 상세 정보를 불러오지 못했습니다. 전화번호 검색 결과가 누락될 수 있습니다."
+          onRetry={() => void details.refetch()}
+        />
+      )}
+      <p role="status" className="text-sm text-slate-500">
+        검색 결과 {filtered.length}건
+        {pendingDetails ? " · 인원·입금 정보 및 전화번호 검색 준비 중..." : ""}
+      </p>
+      {list.isLoading ? (
+        <LoadingRows />
+      ) : (
+        !list.isError && (
+          <section
+            aria-label="예약 목록"
+            className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+          >
+            <div className="hidden grid-cols-[1.2fr_1fr_1.4fr_1fr_1fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 xl:grid">
+              <span>시설 / 예약번호</span>
+              <span>예약자 / 인원</span>
+              <span>이용 일정</span>
+              <span>입금자 / 예약금</span>
+              <span>상태</span>
+            </div>
+            {rows.map((item) => {
+              const detail = details.data?.details[item.reservationId];
+              return (
                 <button
-                  key={reservation.reservationId}
+                  key={item.reservationId}
                   type="button"
-                  onClick={() => selectReservation(reservation.reservationId)}
-                  className="flex w-full min-w-0 flex-col items-start justify-between gap-3 border-b p-4 text-left transition last:border-b-0 hover:bg-gray-50 sm:flex-row sm:items-center sm:p-5"
+                  onClick={() => setSelected(item.reservationId)}
+                  className="grid w-full gap-3 border-b border-slate-100 p-4 text-left text-sm last:border-0 hover:bg-slate-50 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1.4fr_1fr_1fr] xl:items-center"
                 >
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{reservation.guestName}</p>
-
-                      <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-500">
-                        {reservation.roomType === "ROOM" ? "방" : "평상"}
+                    <p className="font-semibold">
+                      {item.roomName} · {item.quantity}개
+                    </p>
+                    <p className="mt-1 break-all text-xs text-slate-500">
+                      {item.reservationNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      {item.guestName}{" "}
+                      <span className="text-slate-500">
+                        {detail ? `${detail.guestCount}명` : "인원 확인 중"}
                       </span>
-                    </div>
-
-                    <p className="mt-2 text-sm text-gray-600">
-                      {reservation.roomName} · {reservation.quantity}개
                     </p>
-
-                    <p className="mt-1 text-sm text-gray-500">
-                      {formatSchedule(
-                        reservation.roomType,
-                        reservation.checkIn,
-                        reservation.checkOut,
-                      )}
+                    <p className="mt-1 text-xs text-slate-500">
+                      {detail?.phoneNumber ?? "상세에서 확인"}
                     </p>
                   </div>
-
-                  <div className="min-w-0 text-left sm:text-right">
-                    <p className="text-sm font-medium">
-                      {statusLabels[reservation.status]}
+                  <p className="text-xs leading-5 text-slate-600">
+                    {scheduleLabel(item.roomType, item.checkIn, item.checkOut)}
+                  </p>
+                  <div>
+                    <p className="text-xs text-slate-500">
+                      입금자 {detail?.depositorName ?? "확인 중"}
                     </p>
-
-                    <p className="mt-1 text-xs text-gray-400">
-                      {reservation.reservationNumber}
+                    <p className="mt-1 font-medium">
+                      {detail
+                        ? `${detail.depositAmount.toLocaleString()}원`
+                        : "예약금 확인 중"}
                     </p>
+                  </div>
+                  <div>
+                    <ReservationStatusBadge status={item.status} />
                   </div>
                 </button>
-              ))
+              );
+            })}
+            {!rows.length && (
+              <p className="p-10 text-center text-sm text-slate-500">
+                {pendingDetails
+                  ? "전화번호를 포함한 검색 정보를 확인하고 있습니다."
+                  : "조건에 맞는 예약이 없습니다."}
+              </p>
             )}
-          </div>
-        </section>
+          </section>
+        )
       )}
-
-      {/* 예약 상세 로딩 */}
-      {selectedId !== null && detailLoading && (
-        <p className="mt-6 text-sm text-gray-500">
-          예약 상세를 불러오는 중입니다.
-        </p>
-      )}
-
-      {selectedId !== null && detailError && (
-        <p role="alert" className="mt-6 text-sm text-red-500">
-          예약 상세를 불러오지 못했습니다.
-        </p>
-      )}
-
-      {/* 예약 상세 모달 */}
-      {selectedReservation && (
-        <Modal
-          title="예약 상세"
-          busy={
-            confirmMutation.isPending ||
-            cancelMutation.isPending ||
-            memoMutation.isPending
-          }
-          onClose={closeDetail}
+      {totalPages > 1 && (
+        <nav
+          aria-label="예약 목록 페이지"
+          className="flex items-center justify-center gap-4"
         >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <p className="text-xs text-gray-500">예약번호</p>
-
-              <p className="mt-1 break-all font-medium">
-                {selectedReservation.reservationNumber}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">상태</p>
-
-              <p className="mt-1 font-medium">
-                {statusLabels[selectedReservation.status]}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">예약자</p>
-
-              <p className="mt-1 font-medium">
-                {selectedReservation.guestName}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">전화번호</p>
-
-              <p className="mt-1 font-medium">
-                {selectedReservation.phoneNumber}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">입금자명</p>
-
-              <p className="mt-1 font-medium">
-                {selectedReservation.depositorName}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">인원</p>
-
-              <p className="mt-1 font-medium">
-                {selectedReservation.guestCount}명
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">상품</p>
-
-              <p className="mt-1 font-medium">
-                {selectedReservation.roomName} · {selectedReservation.quantity}
-                개
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">예약 일정</p>
-
-              <p className="mt-1 font-medium">
-                {formatSchedule(
-                  selectedReservation.roomType,
-                  selectedReservation.checkIn,
-                  selectedReservation.checkOut,
-                )}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">총 금액</p>
-
-              <p className="mt-1 font-medium">
-                {selectedReservation.totalPrice.toLocaleString()}원
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500">예약금</p>
-
-              <p className="mt-1 font-medium">
-                {selectedReservation.depositAmount.toLocaleString()}원
-              </p>
-            </div>
-          </div>
-
-          {/* 확정된 예약 */}
-          {selectedReservation.status === "CONFIRMED" && (
-            <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm">
-              <p>
-                결제수단:{" "}
-                <strong>
-                  {selectedReservation.paymentMethod === "CARD"
-                    ? "카드"
-                    : selectedReservation.paymentMethod === "CASH"
-                      ? "현금"
-                      : "미등록"}
-                </strong>
-              </p>
-
-              {selectedReservation.confirmedAt && (
-                <p className="mt-2">
-                  확정 시간:{" "}
-                  <strong>
-                    {new Date(selectedReservation.confirmedAt).toLocaleString(
-                      "ko-KR",
-                    )}
-                  </strong>
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* 관리자 메모 */}
-          <div className="mt-6 border-t pt-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="font-semibold">관리자 메모</h3>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  관리자만 확인할 수 있는 메모입니다.
-                </p>
-              </div>
-
-              <span className="shrink-0 text-xs text-gray-400">
-                {memoValue.length} / 500
-              </span>
-            </div>
-
-            <textarea
-              value={memoValue}
-              onChange={(event) => {
-                setAdminMemo(event.target.value.slice(0, 500));
-
-                memoMutation.reset();
-              }}
-              maxLength={500}
-              rows={4}
-              placeholder="예: 차량 2대, 늦은 체크인 예정"
-              className="mt-3 w-full resize-none rounded-xl border p-3 text-sm outline-none transition focus:border-black"
-            />
-
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                disabled={memoMutation.isPending || !memoChanged}
-                onClick={() =>
-                  memoMutation.mutate({
-                    reservationId: selectedReservation.reservationId,
-                    memo: memoValue,
-                  })
-                }
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-black px-5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-300"
-              >
-                <Save size={18} />
-
-                {memoMutation.isPending ? "저장 중..." : "메모 저장"}
-              </button>
-            </div>
-
-            {memoMutation.isSuccess && (
-              <p className="mt-2 text-right text-xs text-green-600">
-                메모가 저장되었습니다.
-              </p>
-            )}
-
-            {memoMutation.isError && (
-              <p className="mt-2 text-right text-xs text-red-500">
-                메모 저장에 실패했습니다.
-              </p>
-            )}
-          </div>
-
-          {/* 결제수단 선택 */}
-          {selectedReservation.status === "PENDING" && selectingPayment && (
-            <div className="mt-6 rounded-2xl bg-gray-50 p-4">
-              <p className="font-semibold">결제 수단을 선택해 주세요.</p>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("CARD")}
-                  className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border ${
-                    paymentMethod === "CARD"
-                      ? "border-black bg-black text-white"
-                      : "bg-white"
-                  }`}
-                >
-                  <CreditCard size={20} />
-                  카드
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("CASH")}
-                  className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border ${
-                    paymentMethod === "CASH"
-                      ? "border-black bg-black text-white"
-                      : "bg-white"
-                  }`}
-                >
-                  <Banknote size={20} />
-                  현금
-                </button>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectingPayment(false);
-
-                    setPaymentMethod(null);
-                  }}
-                  className="min-h-11 rounded-xl border bg-white"
-                >
-                  취소
-                </button>
-
-                <button
-                  type="button"
-                  disabled={!paymentMethod || confirmMutation.isPending}
-                  onClick={() => {
-                    if (!paymentMethod) {
-                      return;
-                    }
-
-                    confirmMutation.mutate({
-                      reservationId: selectedReservation.reservationId,
-                      paymentMethod,
-                    });
-                  }}
-                  className="min-h-11 rounded-xl bg-black text-white disabled:bg-gray-300"
-                >
-                  {confirmMutation.isPending ? "확정 중..." : "예약 확정"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {confirmMutation.isError && (
-            <p role="alert" className="mt-4 text-sm text-red-500">
-              예약 확정에 실패했습니다. 다시 시도해 주세요.
-            </p>
-          )}
-
-          {cancelMutation.isError && (
-            <p role="alert" className="mt-4 text-sm text-red-500">
-              예약 취소에 실패했습니다. 다시 시도해 주세요.
-            </p>
-          )}
-
-          {/* 하단 버튼 */}
-          {!selectingPayment && (
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              {selectedReservation.status === "PENDING" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    confirmMutation.reset();
-
-                    setPaymentMethod(null);
-
-                    setSelectingPayment(true);
-                  }}
-                  disabled={cancelMutation.isPending || memoMutation.isPending}
-                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-black px-4 text-white disabled:bg-gray-300"
-                >
-                  <Check size={20} />
-                  입금 확인 · 예약 확정
-                </button>
-              )}
-
-              {selectedReservation.status !== "CANCELED" && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    cancelMutation.mutate(selectedReservation.reservationId)
-                  }
-                  disabled={
-                    confirmMutation.isPending ||
-                    cancelMutation.isPending ||
-                    memoMutation.isPending
-                  }
-                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500 px-4 text-red-500 disabled:opacity-50"
-                >
-                  <X size={20} />
-
-                  {cancelMutation.isPending ? "취소 중..." : "예약 취소"}
-                </button>
-              )}
-            </div>
-          )}
-        </Modal>
+          <button
+            disabled={currentPage <= 1}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set("page", String(currentPage - 1));
+              setParams(next);
+            }}
+            className="min-h-10 rounded-lg border bg-white px-3 disabled:opacity-40"
+          >
+            이전
+          </button>
+          <span className="text-sm">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            disabled={currentPage >= totalPages}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set("page", String(currentPage + 1));
+              setParams(next);
+            }}
+            className="min-h-10 rounded-lg border bg-white px-3 disabled:opacity-40"
+          >
+            다음
+          </button>
+        </nav>
+      )}
+      {selected !== null && (
+        <ReservationDetailDrawer
+          key={selected}
+          reservationId={selected}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

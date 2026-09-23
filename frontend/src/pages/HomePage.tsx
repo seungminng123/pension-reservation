@@ -47,10 +47,10 @@ export default function HomePage() {
           {/* 관리자에서 들어온 경우에만 표시 */}
           {fromAdmin && (
             <Link
-              to="/admin/reservations"
+              to="/admin"
               className="inline-flex min-h-11 items-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
             >
-              ← 관리자 예약 관리로 돌아가기
+              ← 관리자 현황으로 돌아가기
             </Link>
           )}
 

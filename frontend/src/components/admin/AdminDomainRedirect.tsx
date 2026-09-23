@@ -6,7 +6,11 @@ export default function AdminDomainRedirect() {
   const isAdminDomain =
     window.location.hostname === "pension-reservation-admin.vercel.app";
 
-  if (isAdminDomain && location.pathname === "/") {
+  if (
+    isAdminDomain &&
+    location.pathname === "/" &&
+    new URLSearchParams(location.search).get("from") !== "admin"
+  ) {
     return <Navigate to="/admin/login" replace />;
   }
 

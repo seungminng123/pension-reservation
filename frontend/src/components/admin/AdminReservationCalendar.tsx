@@ -1,21 +1,19 @@
 ﻿import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-
 import {
   getAdminReservationCalendar,
   getAdminReservationsByDate,
   getAdminRooms,
 } from "@/api/admin";
-
-import AdminReservationNumberGrid, {
-  type ReservationUnitItem,
-} from "@/components/admin/AdminReservationNumberGrid";
 import MonthNavigation from "@/components/common/MonthNavigation";
-
+import AdminReservationNumberGrid from "@/components/admin/AdminReservationNumberGrid";
+import Modal from "@/components/common/Modal";
+import { facilityState, statusStyles } from "@/utils/adminReservation";
+import ReservationStatusBadge, {
+  ReservationStatusLegend,
+} from "@/components/admin/ReservationStatusBadge";
+import { LoadingRows, QueryError } from "@/components/admin/QueryFeedback";
 import { formatDate, monthDates } from "@/utils/date";
-
-import type { AdminRoom } from "@/types/admin";
-
 export default function AdminReservationCalendar({
   onSelect,
 }: {
@@ -24,332 +22,200 @@ export default function AdminReservationCalendar({
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
-
   const [date, setDate] = useState(formatDate(new Date()));
-
   const year = month.getFullYear();
   const monthNumber = month.getMonth() + 1;
-
   const calendar = useQuery({
     queryKey: ["adminReservationCalendar", year, monthNumber],
     queryFn: () => getAdminReservationCalendar(year, monthNumber),
   });
-
   const reservations = useQuery({
     queryKey: ["adminReservationsByDate", date],
     queryFn: () => getAdminReservationsByDate(date),
   });
-
-  const rooms = useQuery({
-    queryKey: ["adminRooms"],
-    queryFn: getAdminRooms,
+  const rooms = useQuery({ queryKey: ["adminRooms"], queryFn: getAdminRooms });
+  const [selectedFacility, setSelectedFacility] = useState<number | null>(null);
+  const units = (rooms.data ?? []).map((room) => {
+    const state = facilityState(room, reservations.data ?? []);
+    return { ...room, ...state, reservationCount: state.items.length };
   });
-
+  const chosen = units.find((unit) => unit.roomId === selectedFacility);
+  const selectFacility = (id: number) => {
+    const unit = units.find((item) => item.roomId === id);
+    if (unit?.items.length === 1) onSelect(unit.items[0].reservationId);
+    else setSelectedFacility(id);
+  };
   const days = new Map(calendar.data?.map((day) => [day.date, day]));
-
-  /*
-   * =========================
-   * 해당 방/평상의 활성 예약 찾기
-   * =========================
-   *
-   * CANCELED:
-   * 이미 취소가 완료된 예약이므로
-   * 숫자 카드에서는 예약 가능 상태로 처리한다.
-   */
-  const findActiveReservation = (roomId: number) => {
-    const matchingReservations =
-      reservations.data?.filter(
-        (reservation) =>
-          reservation.roomId === roomId && reservation.status !== "CANCELED",
-      ) ?? [];
-
-    /*
-     * 같은 방에 여러 데이터가 있을 경우
-     * 관리자가 우선 확인해야 하는 상태 순서로 찾는다.
-     */
-    return (
-      matchingReservations.find(
-        (reservation) => reservation.status === "CANCEL_REQUESTED",
-      ) ??
-      matchingReservations.find(
-        (reservation) => reservation.status === "PENDING",
-      ) ??
-      matchingReservations.find(
-        (reservation) => reservation.status === "CONFIRMED",
-      )
-    );
-  };
-
-  /*
-   * =========================
-   * 숫자 카드 상태 변환
-   * =========================
-   *
-   * 예약 없음 / CANCELED
-   * -> AVAILABLE
-   *
-   * PENDING
-   * -> 입금 확인 대기
-   *
-   * CONFIRMED
-   * -> 예약 확정
-   *
-   * CANCEL_REQUESTED
-   * -> 취소 요청
-   */
-  const createUnitItem = (room: AdminRoom): ReservationUnitItem => {
-    const reservation = findActiveReservation(room.roomId);
-
-    // 예약 없음
-    if (!reservation) {
-      return {
-        roomId: room.roomId,
-        name: room.name,
-        type: room.type,
-        status: "AVAILABLE",
-      };
-    }
-
-    // 입금 확인 대기
-    if (reservation.status === "PENDING") {
-      return {
-        roomId: room.roomId,
-        name: room.name,
-        type: room.type,
-        status: "PENDING",
-      };
-    }
-
-    // 예약 확정
-    if (reservation.status === "CONFIRMED") {
-      return {
-        roomId: room.roomId,
-        name: room.name,
-        type: room.type,
-        status: "CONFIRMED",
-      };
-    }
-
-    // 취소 요청
-    if (reservation.status === "CANCEL_REQUESTED") {
-      return {
-        roomId: room.roomId,
-        name: room.name,
-        type: room.type,
-        status: "CANCEL_REQUESTED",
-      };
-    }
-
-    // CANCELED 등
-    return {
-      roomId: room.roomId,
-      name: room.name,
-      type: room.type,
-      status: "AVAILABLE",
-    };
-  };
-
-  /*
-   * =========================
-   * 방 숫자 카드
-   * =========================
-   */
-  const roomUnits: ReservationUnitItem[] = (rooms.data ?? [])
-    .filter((room) => room.type === "ROOM")
-    .map(createUnitItem);
-
-  /*
-   * =========================
-   * 평상 숫자 카드
-   * =========================
-   */
-  const pyeongsangUnits: ReservationUnitItem[] = (rooms.data ?? [])
-    .filter((room) => room.type === "PYEONGSANG")
-    .map(createUnitItem);
-
-  /*
-   * =========================
-   * 숫자 카드 선택
-   * =========================
-   *
-   * 예약이 있는 번호:
-   * -> 예약 상세 모달 열기
-   *
-   * 예약 가능한 번호:
-   * -> 선택 표시만
-   */
-  const handleSelectUnit = (roomId: number) => {
-    const reservation = findActiveReservation(roomId);
-
-    // 예약 가능한 상태면 상세 예약이 없으므로 아무것도 열지 않음
-    if (!reservation) {
-      return;
-    }
-
-    // 예약이 있으면 예약 상세 모달 열기
-    onSelect(reservation.reservationId);
-  };
-  /*
-   * =========================
-   * 날짜 변경
-   * =========================
-   */
-  const handleDateChange = (nextDate: string) => {
-    setDate(nextDate);
-  };
-
   return (
-    <section className="rounded-2xl border bg-white p-3 sm:p-5">
-      {/* 헤더 */}
-      <div className="mb-5">
-        <h3 className="text-xl font-bold">예약 현황</h3>
-
-        <p className="mt-1 text-sm text-gray-500">
-          날짜를 선택하면 해당 날짜의 방과 평상 예약 상태를 확인할 수 있습니다.
-        </p>
-      </div>
-
-      {/* 월 이동 */}
+    <section
+      className="rounded-lg border border-slate-200 bg-white p-3 sm:p-5"
+      aria-label="월간 예약 현황"
+    >
       <MonthNavigation
         month={month}
-        onChange={(nextMonth) => {
-          setMonth(nextMonth);
-
-          setDate(formatDate(nextMonth));
+        onChange={(next) => {
+          setMonth(next);
+          setDate(formatDate(next));
         }}
       />
-
-      {/* 달력 */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <ReservationStatusLegend />
+        <button
+          type="button"
+          onClick={() => {
+            const now = new Date();
+            setMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+            setDate(formatDate(now));
+            setSelectedFacility(null);
+          }}
+          className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm"
+        >
+          오늘
+        </button>
+      </div>
       {calendar.isLoading ? (
-        <p className="p-5 text-center text-sm text-gray-500" role="status">
-          예약 현황을 불러오는 중입니다.
-        </p>
+        <LoadingRows />
       ) : calendar.isError ? (
-        <div className="p-5 text-center" role="alert">
-          <p className="text-sm text-red-500">
-            예약 현황을 불러오지 못했습니다.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => void calendar.refetch()}
-            className="mt-2 text-sm underline"
-          >
-            다시 시도
-          </button>
-        </div>
+        <QueryError onRetry={() => void calendar.refetch()} />
       ) : (
         <div className="mt-4 grid grid-cols-7 gap-1">
           {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-            <span key={day} className="py-2 text-center text-xs text-gray-500">
+            <span key={day} className="py-2 text-center text-xs text-slate-500">
               {day}
             </span>
           ))}
-
-          {Array.from(
-            {
-              length: month.getDay(),
-            },
-            (_, index) => (
-              <div key={index} />
-            ),
-          )}
-
+          {Array.from({ length: month.getDay() }, (_, i) => (
+            <div key={i} />
+          ))}
           {monthDates(month).map((day) => {
             const summary = days.get(day);
-            const isSelected = date === day;
-
             return (
               <button
                 key={day}
                 type="button"
-                aria-pressed={isSelected}
-                onClick={() => handleDateChange(day)}
-                className={`min-h-20 min-w-0 rounded-lg border px-1 py-2 text-center transition sm:min-h-24 sm:rounded-xl ${
-                  isSelected
-                    ? "border-black bg-gray-100"
-                    : "border-gray-100 hover:bg-gray-50"
-                }`}
+                aria-label={`${day}, 예약 ${summary?.reservationCount ?? 0}건, 대기 ${summary?.pendingCount ?? 0}건, 확정 ${summary?.confirmedCount ?? 0}건`}
+                aria-pressed={date === day}
+                onClick={() => {
+                  setDate(day);
+                  setSelectedFacility(null);
+                }}
+                className={`min-h-20 min-w-0 rounded-md border px-0.5 py-2 text-center ${date === day ? "border-slate-900 bg-slate-100" : "border-slate-100"}`}
               >
                 <span className="text-sm font-semibold">
                   {Number(day.slice(-2))}
                 </span>
-
-                {/* 예약 있는 날 */}
-                {summary && (
-                  <div className="mt-2">
-                    <span className="block text-[10px] font-medium sm:text-xs">
-                      예약 {summary.reservationCount}건
-                    </span>
-
-                    <span className="mt-0.5 block text-[9px] text-gray-500 sm:text-xs">
-                      수량 {summary.reservedQuantity}개
-                    </span>
-                  </div>
+                <span className="mt-1 block text-[10px] sm:text-xs">
+                  예약 {summary?.reservationCount ?? 0}건
+                </span>
+                <span className="block text-[10px] text-slate-500 sm:text-xs">
+                  수량 {summary?.reservedQuantity ?? 0}개
+                </span>
+                <span
+                  className={
+                    "mt-1 block rounded border text-[9px] sm:text-xs " +
+                    (summary?.pendingCount
+                      ? statusStyles.PENDING
+                      : "border-slate-100 bg-white text-slate-400")
+                  }
+                >
+                  대기 {summary?.pendingCount ?? 0}
+                </span>
+                <span
+                  className={
+                    "mt-1 block rounded border text-[9px] sm:text-xs " +
+                    (summary?.confirmedCount
+                      ? statusStyles.CONFIRMED
+                      : "border-slate-100 bg-white text-slate-400")
+                  }
+                >
+                  확정 {summary?.confirmedCount ?? 0}
+                </span>
+                {!!summary?.cancelRequestedCount && (
+                  <span className="mt-1 block text-[9px] text-red-700">
+                    취소요청 {summary.cancelRequestedCount}
+                  </span>
                 )}
               </button>
             );
           })}
         </div>
       )}
-
-      {/* 선택 날짜 예약 현황 */}
-      <div className="mt-6 border-t pt-6">
-        <h3 className="text-lg font-bold">{date} 예약 현황</h3>
-
-        <p className="mt-1 text-xs text-gray-400">
-          예약이 있는 번호를 선택하면 상세 정보를 확인할 수 있습니다.
-        </p>
-
-        {reservations.isLoading || rooms.isLoading ? (
-          <p className="py-6 text-sm text-gray-500" role="status">
-            예약 현황을 불러오는 중입니다.
-          </p>
-        ) : reservations.isError || rooms.isError ? (
-          <div className="py-6" role="alert">
-            <p className="text-sm text-red-500">
-              예약 현황을 불러오지 못했습니다.
-            </p>
-
+      <h3 className="mt-5 border-t border-slate-200 pt-4 font-semibold">
+        {date} 예약
+      </h3>
+      {reservations.isLoading || rooms.isLoading ? (
+        <LoadingRows />
+      ) : reservations.isError || rooms.isError ? (
+        <QueryError
+          onRetry={() => {
+            void reservations.refetch();
+            void rooms.refetch();
+          }}
+        />
+      ) : (
+        <div className="mt-4 space-y-4">
+          <AdminReservationNumberGrid
+            title="방"
+            items={units.filter((unit) => unit.type === "ROOM")}
+            onSelect={selectFacility}
+          />
+          <AdminReservationNumberGrid
+            title="평상"
+            items={units.filter((unit) => unit.type === "PYEONGSANG")}
+            onSelect={selectFacility}
+          />
+        </div>
+      )}
+      {chosen && (
+        <Modal title={chosen.name} onClose={() => setSelectedFacility(null)}>
+          {chosen.items.length ? (
+            <div className="space-y-2">
+              {chosen.items.map((item) => (
+                <button
+                  key={item.reservationId}
+                  type="button"
+                  onClick={() => {
+                    setSelectedFacility(null);
+                    onSelect(item.reservationId);
+                  }}
+                  className="flex w-full flex-wrap justify-between gap-2 rounded-lg border p-3 text-sm"
+                >
+                  <span>
+                    {item.guestName} · {item.quantity}개
+                  </span>
+                  <ReservationStatusBadge status={item.status} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <ReservationStatusBadge status={chosen.status} />
+          )}
+        </Modal>
+      )}
+      {reservations.isLoading ? (
+        <LoadingRows />
+      ) : reservations.isError ? (
+        <QueryError onRetry={() => void reservations.refetch()} />
+      ) : reservations.data?.length ? (
+        <div className="mt-3 divide-y divide-slate-100">
+          {reservations.data.map((item) => (
             <button
-              type="button"
-              onClick={() => {
-                void reservations.refetch();
-                void rooms.refetch();
-              }}
-              className="mt-2 text-sm underline"
+              key={item.reservationId}
+              onClick={() => onSelect(item.reservationId)}
+              className="flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left text-sm"
             >
-              다시 시도
+              <span>
+                {item.roomName} · {item.guestName} · {item.quantity}개
+              </span>
+              <ReservationStatusBadge status={item.status} />
             </button>
-          </div>
-        ) : (
-          <>
-            {/* 방 */}
-            {roomUnits.length > 0 && (
-              <AdminReservationNumberGrid
-                title="방"
-                items={roomUnits}
-                onSelect={handleSelectUnit}
-              />
-            )}
-
-            {/* 평상 */}
-            {pyeongsangUnits.length > 0 && (
-              <AdminReservationNumberGrid
-                title="평상"
-                items={pyeongsangUnits}
-                onSelect={handleSelectUnit}
-              />
-            )}
-
-            {!roomUnits.length && !pyeongsangUnits.length && (
-              <p className="py-6 text-sm text-gray-500">
-                등록된 방과 평상이 없습니다.
-              </p>
-            )}
-          </>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <p className="py-5 text-sm text-slate-500">
+          해당 날짜에는 예약이 없습니다.
+        </p>
+      )}
     </section>
   );
 }

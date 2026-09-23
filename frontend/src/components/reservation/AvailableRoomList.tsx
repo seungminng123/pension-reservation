@@ -1,5 +1,5 @@
 ﻿import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { getAvailableRooms } from "@/api/room";
 
@@ -28,6 +28,7 @@ export default function AvailableRoomList({
   type,
 }: AvailableRoomListProps) {
   const navigate = useNavigate();
+  const [originParams] = useSearchParams();
 
   const query = useQuery({
     queryKey: ["availableRooms", checkIn, checkOut],
@@ -68,6 +69,7 @@ export default function AvailableRoomList({
       checkOut,
     });
 
+    if (originParams.get("from") === "admin") searchParams.set("from", "admin");
     navigate(`/rooms/${roomId}?${searchParams.toString()}`);
   };
 

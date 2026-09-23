@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
     onSuccess: (accessToken) => {
       setAccessToken(accessToken);
 
-      navigate("/admin/reservations", {
+      navigate("/admin", {
         replace: true,
       });
     },

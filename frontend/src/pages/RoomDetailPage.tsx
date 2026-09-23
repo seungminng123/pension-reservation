@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Minus, Plus } from "lucide-react";
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { checkRoomAvailability, getRoom } from "@/api/room";
@@ -11,11 +11,14 @@ import RoomImageGallery from "@/components/room/RoomImageGallery";
 import { formatDate, isValidDate } from "@/utils/date";
 
 export default function RoomDetailPage() {
+  const queryClient = useQueryClient();
   const { roomId } = useParams();
 
   const id = Number(roomId);
 
   const [searchParams] = useSearchParams();
+  const fromAdmin = searchParams.get("from") === "admin";
+  const bookingHome = fromAdmin ? "/?from=admin" : "/";
 
   const checkIn = searchParams.get("checkIn") ?? "";
 
@@ -61,6 +64,17 @@ export default function RoomDetailPage() {
 
   const reservationMutation = useMutation({
     mutationFn: createReservation,
+    onSuccess: () => {
+      for (const key of [
+        "adminReservations",
+        "adminReservationCalendar",
+        "adminReservationsByDate",
+        "availableRooms",
+        "roomAvailabilityCheck",
+      ]) {
+        void queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    },
   });
 
   if (!validDates) {
@@ -69,7 +83,7 @@ export default function RoomDetailPage() {
         <p>예약 날짜를 먼저 선택해 주세요.</p>
 
         <Link
-          to="/"
+          to={bookingHome}
           className="inline-block rounded-xl bg-black px-6 py-3 text-white"
         >
           날짜 선택하기
@@ -259,14 +273,14 @@ export default function RoomDetailPage() {
           </p>
 
           <Link
-            to="/reservation/lookup"
+            to={fromAdmin ? "/admin" : "/reservation/lookup"}
             className="mt-7 block rounded-xl bg-black py-4 text-center font-bold text-white"
           >
-            예약 조회하기
+            {fromAdmin ? "관리자 현황으로 돌아가기" : "예약 조회하기"}
           </Link>
 
           <Link
-            to="/"
+            to={bookingHome}
             className="mt-3 block py-3 text-center text-sm text-gray-500"
           >
             홈으로 돌아가기
@@ -284,9 +298,9 @@ export default function RoomDetailPage() {
           <RoomImageGallery roomId={room.roomId} roomName={room.name} />
 
           <Link
-            to="/"
+            to={fromAdmin ? "/admin" : bookingHome}
             className="absolute left-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 shadow"
-            aria-label="뒤로가기"
+            aria-label={fromAdmin ? "관리자 현황으로 돌아가기" : "뒤로가기"}
           >
             <ArrowLeft size={20} />
           </Link>
@@ -335,7 +349,10 @@ export default function RoomDetailPage() {
 
           <p className="mt-2 text-sm font-medium">{durationLabel}</p>
 
-          <Link to="/" className="mt-2 inline-block text-sm underline">
+          <Link
+            to={bookingHome}
+            className="mt-2 inline-block text-sm underline"
+          >
             날짜 변경하기
           </Link>
 

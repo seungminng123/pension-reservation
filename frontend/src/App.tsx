@@ -1,9 +1,11 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import AdminDomainRedirect from "@/components/admin/AdminDomainRedirect";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import PwaMetaManager from "@/components/common/PwaMetaManager";
 
+import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
+import AdminPricingPage from "@/pages/admin/AdminPricingPage";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
 import AdminReservationsPage from "@/pages/admin/AdminReservationsPage";
@@ -35,7 +37,8 @@ export default function App() {
         {/* 관리자 인증 필요 */}
         <Route element={<AdminProtectedRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="reservations" replace />} />
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="pricing" element={<AdminPricingPage />} />
 
             <Route path="reservations" element={<AdminReservationsPage />} />
 

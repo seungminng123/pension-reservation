@@ -1,23 +1,29 @@
 ﻿import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 
+let scrollLocks = 0;
+let originalOverflow = "";
+
 export default function Modal({
   title,
   children,
   onClose,
   busy = false,
+  variant = "modal",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   busy?: boolean;
+  variant?: "modal" | "drawer";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const dialog = ref.current;
     const previous = document.activeElement;
-    const overflow = document.body.style.overflow;
+    if (scrollLocks === 0) originalOverflow = document.body.style.overflow;
+    scrollLocks += 1;
 
     dialog?.showModal();
 
@@ -26,9 +32,10 @@ export default function Modal({
     return () => {
       dialog?.close();
 
-      document.body.style.overflow = overflow;
+      scrollLocks -= 1;
+      if (scrollLocks === 0) document.body.style.overflow = originalOverflow;
 
-      if (previous instanceof HTMLElement) {
+      if (previous instanceof HTMLElement && previous.isConnected) {
         previous.focus();
       }
     };
@@ -36,7 +43,7 @@ export default function Modal({
 
   // 모달 바깥 배경 클릭 시 닫기
   const handleBackdropClick = (event: MouseEvent<HTMLDialogElement>) => {
-    if (busy) {
+    if (busy || event.target !== event.currentTarget) {
       return;
     }
 
@@ -67,7 +74,11 @@ export default function Modal({
           onClose();
         }
       }}
-      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-3xl overflow-y-auto rounded-2xl border bg-white p-4 text-gray-900 backdrop:bg-black/50 sm:p-6"
+      className={
+        variant === "drawer"
+          ? "fixed inset-0 m-0 h-dvh max-h-dvh w-full max-w-none overflow-y-auto border-0 bg-white p-4 text-slate-900 backdrop:bg-black/40 sm:ml-auto sm:max-w-lg sm:border-l sm:border-slate-200 sm:p-6"
+          : "fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-slate-900 backdrop:bg-black/40 sm:p-6"
+      }
     >
       <div className="mb-5 flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold">{title}</h2>
