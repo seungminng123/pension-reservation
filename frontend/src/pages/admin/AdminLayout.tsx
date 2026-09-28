@@ -67,7 +67,7 @@ export default function AdminLayout() {
         <aside className="shrink-0 border-b border-slate-200 bg-white lg:min-h-[calc(100dvh-70px)] lg:w-48 lg:border-r lg:border-b-0">
           <nav
             aria-label="관리자 메뉴"
-            className="flex gap-1 overflow-x-auto p-2 lg:sticky lg:top-0 lg:flex-col lg:p-3"
+            className="grid grid-cols-5 gap-1 p-2 sm:flex sm:flex-wrap lg:sticky lg:top-0 lg:flex-col lg:p-3"
           >
             {links.map(({ to, label, icon: Icon, end }) => (
               <NavLink
@@ -75,7 +75,7 @@ export default function AdminLayout() {
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm ${isActive || (to === "/admin/pricing" && /^\/admin\/rooms\/[^/]+\/pricing$/.test(location.pathname)) ? "bg-slate-900 font-semibold text-white" : "text-slate-600 hover:bg-slate-100"}`
+                  `flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 whitespace-nowrap rounded-md px-1 py-1 text-[11px] sm:flex-row sm:justify-start sm:gap-2 sm:px-3 sm:text-sm ${isActive || (to === "/admin/pricing" && /^\/admin\/rooms\/[^/]+\/pricing$/.test(location.pathname)) ? "bg-slate-900 font-semibold text-white" : "text-slate-600 hover:bg-slate-100"}`
                 }
               >
                 <Icon size={17} />

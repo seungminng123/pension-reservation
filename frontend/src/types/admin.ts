@@ -113,6 +113,12 @@ export type AdminRoomPriceResetRequest = {
 };
 
 export type AdminReservationCalendarDay = {
+  roomPendingCount: number;
+  roomConfirmedCount: number;
+  pyeongsangPendingCount: number;
+  pyeongsangConfirmedCount: number;
+  room?: { pending: number; confirmed: number } | null;
+  pyeongsang?: { pending: number; confirmed: number } | null;
   date: string;
   reservationCount: number;
   reservedQuantity: number;

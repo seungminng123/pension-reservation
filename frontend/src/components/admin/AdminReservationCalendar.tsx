@@ -8,7 +8,7 @@ import {
 import MonthNavigation from "@/components/common/MonthNavigation";
 import AdminReservationNumberGrid from "@/components/admin/AdminReservationNumberGrid";
 import Modal from "@/components/common/Modal";
-import { facilityState, statusStyles } from "@/utils/adminReservation";
+import { facilityState } from "@/utils/adminReservation";
 import ReservationStatusBadge, {
   ReservationStatusLegend,
 } from "@/components/admin/ReservationStatusBadge";
@@ -16,13 +16,19 @@ import { LoadingRows, QueryError } from "@/components/admin/QueryFeedback";
 import { formatDate, monthDates } from "@/utils/date";
 export default function AdminReservationCalendar({
   onSelect,
+  initialDate,
 }: {
+  initialDate?: string;
   onSelect: (id: number) => void;
 }) {
-  const [month, setMonth] = useState(
-    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-  );
-  const [date, setDate] = useState(formatDate(new Date()));
+  const [month, setMonth] = useState(() => {
+    const initial = initialDate
+      ? new Date(`${initialDate}T00:00:00`)
+      : new Date();
+    return new Date(initial.getFullYear(), initial.getMonth(), 1);
+  });
+  const [date, setDate] = useState(initialDate ?? formatDate(new Date()));
+  const today = formatDate(new Date());
   const year = month.getFullYear();
   const monthNumber = month.getMonth() + 1;
   const calendar = useQuery({
@@ -51,15 +57,36 @@ export default function AdminReservationCalendar({
       className="rounded-lg border border-slate-200 bg-white p-3 sm:p-5"
       aria-label="월간 예약 현황"
     >
-      <MonthNavigation
-        month={month}
-        onChange={(next) => {
-          setMonth(next);
-          setDate(formatDate(next));
-        }}
-      />
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <ReservationStatusLegend />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 sm:gap-y-3">
+        <div className="min-w-0 max-sm:[&_button]:h-8 max-sm:[&_button]:w-8 max-sm:[&_h3]:text-sm sm:col-span-2">
+          <MonthNavigation
+            month={month}
+            onChange={(next) => {
+              setSelectedFacility(null);
+              setMonth(next);
+              setDate(formatDate(next));
+            }}
+          />
+        </div>
+        <div
+          className="order-3 col-span-2 flex flex-wrap gap-3 text-xs sm:order-2 sm:col-span-1 sm:text-sm"
+          aria-label="월간 예약 상태 범례: 첫 번째 숫자는 확정, 두 번째 숫자는 대기"
+        >
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden="true" className="text-green-700">
+              ●
+            </span>
+            <span className="sm:hidden">확정</span>
+            <span className="hidden sm:inline">예약 확정</span>
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden="true" className="text-yellow-700">
+              ●
+            </span>
+            <span className="sm:hidden">대기</span>
+            <span className="hidden sm:inline">입금 확인 대기</span>
+          </span>
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -68,7 +95,7 @@ export default function AdminReservationCalendar({
             setDate(formatDate(now));
             setSelectedFacility(null);
           }}
-          className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm"
+          className="order-2 min-h-8 rounded-md border border-slate-300 px-2 text-xs sm:order-3 sm:min-h-11 sm:rounded-lg sm:px-3 sm:text-sm"
         >
           오늘
         </button>
@@ -78,71 +105,144 @@ export default function AdminReservationCalendar({
       ) : calendar.isError ? (
         <QueryError onRetry={() => void calendar.refetch()} />
       ) : (
-        <div className="mt-4 grid grid-cols-7 gap-1">
-          {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-            <span key={day} className="py-2 text-center text-xs text-slate-500">
-              {day}
-            </span>
-          ))}
-          {Array.from({ length: month.getDay() }, (_, i) => (
-            <div key={i} />
-          ))}
-          {monthDates(month).map((day) => {
-            const summary = days.get(day);
-            return (
-              <button
+        <div className="mt-3 sm:mt-4">
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+            {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+              <span
                 key={day}
-                type="button"
-                aria-label={`${day}, 예약 ${summary?.reservationCount ?? 0}건, 대기 ${summary?.pendingCount ?? 0}건, 확정 ${summary?.confirmedCount ?? 0}건`}
-                aria-pressed={date === day}
-                onClick={() => {
-                  setDate(day);
-                  setSelectedFacility(null);
-                }}
-                className={`min-h-20 min-w-0 rounded-md border px-0.5 py-2 text-center ${date === day ? "border-slate-900 bg-slate-100" : "border-slate-100"}`}
+                className="py-2 text-center text-xs text-slate-500"
               >
-                <span className="text-sm font-semibold">
-                  {Number(day.slice(-2))}
-                </span>
-                <span className="mt-1 block text-[10px] sm:text-xs">
-                  예약 {summary?.reservationCount ?? 0}건
-                </span>
-                <span className="block text-[10px] text-slate-500 sm:text-xs">
-                  수량 {summary?.reservedQuantity ?? 0}개
-                </span>
-                <span
-                  className={
-                    "mt-1 block rounded border text-[9px] sm:text-xs " +
-                    (summary?.pendingCount
-                      ? statusStyles.PENDING
-                      : "border-slate-100 bg-white text-slate-400")
-                  }
+                {day}
+              </span>
+            ))}
+            {Array.from({ length: month.getDay() }, (_, i) => (
+              <div key={i} />
+            ))}
+            {monthDates(month).map((day) => {
+              const summary = days.get(day);
+              const roomConfirmed = summary?.roomConfirmedCount ?? 0;
+              const roomPending = summary?.roomPendingCount ?? 0;
+              const pyeongsangConfirmed =
+                summary?.pyeongsangConfirmedCount ?? 0;
+              const pyeongsangPending = summary?.pyeongsangPendingCount ?? 0;
+              const hasRoomReservation = roomConfirmed > 0 || roomPending > 0;
+              const hasPyeongsangReservation =
+                pyeongsangConfirmed > 0 || pyeongsangPending > 0;
+              const counts = [
+                {
+                  label: "방",
+                  pending: roomPending,
+                  confirmed: roomConfirmed,
+                  visibleOnMobile: hasRoomReservation,
+                },
+                {
+                  label: "평상",
+                  pending: pyeongsangPending,
+                  confirmed: pyeongsangConfirmed,
+                  visibleOnMobile: hasPyeongsangReservation,
+                },
+              ];
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  aria-label={`${day}${day === today ? ", 오늘" : ""}, ${counts.map(({ label, confirmed, pending }) => `${label} 확정 ${confirmed}건 / 대기 ${pending}건`).join(", ")}`}
+                  aria-current={day === today ? "date" : undefined}
+                  aria-pressed={date === day}
+                  onClick={() => {
+                    setDate(day);
+                    setSelectedFacility(null);
+                  }}
+                  className={`flex min-h-10 min-w-0 flex-col items-stretch rounded-md border px-[3px] py-1 text-center sm:block sm:min-h-28 sm:px-2 sm:py-3 ${date === day ? "border-slate-900 bg-slate-100" : "border-transparent sm:border-slate-100"}`}
                 >
-                  대기 {summary?.pendingCount ?? 0}
-                </span>
-                <span
-                  className={
-                    "mt-1 block rounded border text-[9px] sm:text-xs " +
-                    (summary?.confirmedCount
-                      ? statusStyles.CONFIRMED
-                      : "border-slate-100 bg-white text-slate-400")
-                  }
-                >
-                  확정 {summary?.confirmedCount ?? 0}
-                </span>
-                {!!summary?.cancelRequestedCount && (
-                  <span className="mt-1 block text-[9px] text-red-700">
-                    취소요청 {summary.cancelRequestedCount}
+                  <span
+                    className={
+                      "mx-auto inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold sm:h-7 sm:w-7 sm:text-sm " +
+                      (day === today ? "bg-slate-900 text-white" : "")
+                    }
+                  >
+                    {Number(day.slice(-2))}
                   </span>
-                )}
-              </button>
-            );
-          })}
+                  <span
+                    className={`${hasRoomReservation || hasPyeongsangReservation ? "block" : "hidden sm:block"} mt-1 text-[10px] leading-3 tabular-nums sm:mt-2 sm:space-y-1 sm:text-sm sm:leading-5`}
+                  >
+                    {counts.map(
+                      ({ label, confirmed, pending, visibleOnMobile }) => (
+                        <span
+                          key={label}
+                          className={`${visibleOnMobile ? "block" : "hidden"} text-slate-600 sm:block sm:whitespace-nowrap sm:text-inherit`}
+                        >
+                          <span className="block text-[9px] leading-3 tracking-tight [overflow-wrap:anywhere] sm:hidden">
+                            <span className="inline-block max-w-full">
+                              {label}{" "}
+                              <span
+                                className={`inline-block max-w-full ${
+                                  confirmed
+                                    ? "font-semibold text-green-700"
+                                    : "text-slate-500"
+                                }`}
+                              >
+                                {confirmed}예약
+                              </span>
+                            </span>{" "}
+                            {pending > 0 && (
+                              <span className="inline-block max-w-full">
+                                (
+                                <span
+                                  className={
+                                    pending
+                                      ? "font-semibold text-yellow-700"
+                                      : "text-slate-500"
+                                  }
+                                >
+                                  {pending}대기
+                                </span>
+                                )
+                              </span>
+                            )}
+                          </span>
+                          <span className="hidden sm:inline">
+                            <span className="hidden sm:inline">{label} </span>
+                            <span
+                              className={
+                                confirmed
+                                  ? "font-semibold text-green-700"
+                                  : "text-slate-500"
+                              }
+                            >
+                              {confirmed}
+                            </span>
+                            <span className="hidden sm:inline">{" / "}</span>
+                            <span
+                              className={
+                                pending
+                                  ? "font-semibold text-yellow-700"
+                                  : "text-slate-500"
+                              }
+                            >
+                              <span className="hidden sm:inline">대기 </span>
+                              {pending}
+                            </span>
+                          </span>
+                        </span>
+                      ),
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
-      <h3 className="mt-5 border-t border-slate-200 pt-4 font-semibold">
-        {date} 예약
+      <h3 className="mt-3 border-t border-slate-200 pt-3 text-sm font-semibold sm:mt-5 sm:pt-4 sm:text-base">
+        <span className="sm:hidden">
+          {Number(date.slice(5, 7))}월 {Number(date.slice(8, 10))}일 예약 현황
+        </span>
+        <span className="hidden sm:inline">{date} 예약</span>
       </h3>
+      <div className="mt-3 hidden sm:block">
+        <ReservationStatusLegend />
+      </div>
       {reservations.isLoading || rooms.isLoading ? (
         <LoadingRows />
       ) : reservations.isError || rooms.isError ? (
@@ -153,13 +253,15 @@ export default function AdminReservationCalendar({
           }}
         />
       ) : (
-        <div className="mt-4 space-y-4">
+        <div className="mt-3 space-y-3 sm:mt-4 sm:space-y-4">
           <AdminReservationNumberGrid
+            compactMobile
             title="방"
             items={units.filter((unit) => unit.type === "ROOM")}
             onSelect={selectFacility}
           />
           <AdminReservationNumberGrid
+            compactMobile
             title="평상"
             items={units.filter((unit) => unit.type === "PYEONGSANG")}
             onSelect={selectFacility}
@@ -212,7 +314,7 @@ export default function AdminReservationCalendar({
           ))}
         </div>
       ) : (
-        <p className="py-5 text-sm text-slate-500">
+        <p className="hidden py-5 text-sm text-slate-500 sm:block">
           해당 날짜에는 예약이 없습니다.
         </p>
       )}

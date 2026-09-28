@@ -59,7 +59,8 @@ public class AdminReservationController {
 
     // 월별 예약 캘린더 조회
     @Operation(
-            summary = "월별 예약 캘린더 조회"
+            summary = "월별 예약 상태 및 시설 유형별 집계 조회",
+            description = "기존 월간 합계와 roomPendingCount, roomConfirmedCount, pyeongsangPendingCount, pyeongsangConfirmedCount를 반환합니다. checkIn <= date < checkOut 기준이며 시설별 건수는 PENDING·CONFIRMED만 집계합니다. 월의 모든 날짜를 반환하고 예약이 없는 날짜나 시설 타입은 0입니다."
     )
     @GetMapping("/calendar")
     public List<AdminReservationCalendarDayResponse>

@@ -403,54 +403,73 @@ public class ReservationService {
                                     List.of()
                             );
 
-            if (!dayReservations.isEmpty()) {
 
-                int reservedQuantity =
-                        dayReservations
-                                .stream()
-                                .mapToInt(
-                                        reservation ->
-                                                reservation.getQuantity() == null
-                                                        ? 1
-                                                        : reservation.getQuantity()
-                                )
-                                .sum();
+            int reservedQuantity =
+                    dayReservations
+                            .stream()
+                            .mapToInt(
+                                    reservation ->
+                                            reservation.getQuantity() == null
+                                                    ? 1
+                                                    : reservation.getQuantity()
+                            )
+                            .sum();
 
-                int pendingCount =
-                        countStatus(
-                                dayReservations,
-                                ReservationStatus.PENDING
-                        );
+            int pendingCount =
+                    countStatus(
+                            dayReservations,
+                            ReservationStatus.PENDING
+                    );
 
-                int confirmedCount =
-                        countStatus(
-                                dayReservations,
-                                ReservationStatus.CONFIRMED
-                        );
+            int confirmedCount =
+                    countStatus(
+                            dayReservations,
+                            ReservationStatus.CONFIRMED
+                    );
 
-                int cancelRequestedCount =
-                        countStatus(
-                                dayReservations,
-                                ReservationStatus.CANCEL_REQUESTED
-                        );
+            int cancelRequestedCount =
+                    countStatus(
+                            dayReservations,
+                            ReservationStatus.CANCEL_REQUESTED
+                    );
 
-                result.add(
-                        new AdminReservationCalendarDayResponse(
-                                current,
-                                dayReservations.size(),
-                                reservedQuantity,
-                                pendingCount,
-                                confirmedCount,
-                                cancelRequestedCount
-                        )
-                );
-            }
+            result.add(
+                    new AdminReservationCalendarDayResponse(
+                            current,
+                            countFacilityStatuses(dayReservations, "ROOM"),
+                            countFacilityStatuses(dayReservations, "PYEONGSANG"),
+                            dayReservations.size(),
+                            reservedQuantity,
+                            pendingCount,
+                            confirmedCount,
+                            cancelRequestedCount
+                    )
+            );
 
             current =
                     current.plusDays(1);
         }
 
         return result;
+    }
+
+    private AdminReservationCalendarDayResponse.FacilityCounts countFacilityStatuses(
+            List<Reservation> reservations,
+            String roomType
+    ) {
+        int pending = 0;
+        int confirmed = 0;
+        for (Reservation reservation : reservations) {
+            if (!roomType.equals(reservation.getRoom().getType())) {
+                continue;
+            }
+            if (reservation.getStatus() == ReservationStatus.PENDING) {
+                pending++;
+            } else if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+                confirmed++;
+            }
+        }
+        return new AdminReservationCalendarDayResponse.FacilityCounts(pending, confirmed);
     }
 
     // 관리자 특정 날짜 예약 조회
