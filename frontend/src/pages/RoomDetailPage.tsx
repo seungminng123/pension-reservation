@@ -18,7 +18,7 @@ export default function RoomDetailPage() {
 
   const [searchParams] = useSearchParams();
   const fromAdmin = searchParams.get("from") === "admin";
-  const bookingHome = fromAdmin ? "/?from=admin" : "/";
+  const bookingHome = fromAdmin ? "/reservation?from=admin" : "/reservation";
 
   const checkIn = searchParams.get("checkIn") ?? "";
 
@@ -77,7 +77,7 @@ export default function RoomDetailPage() {
     },
   });
 
-  if (!validDates) {
+  if (!validDates && (checkIn || checkOut)) {
     return (
       <main className="mx-auto max-w-xl space-y-5 px-4 py-12 text-center">
         <p>예약 날짜를 먼저 선택해 주세요.</p>
@@ -101,6 +101,45 @@ export default function RoomDetailPage() {
   if (isError || !room) {
     return (
       <main className="p-10 text-center">상품 정보를 불러오지 못했습니다.</main>
+    );
+  }
+
+  // 홈페이지에서 날짜 없이 진입하면 객실을 먼저 둘러볼 수 있습니다.
+  if (!validDates) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 pb-12">
+        <Link
+          to={fromAdmin ? "/admin" : "/#rooms"}
+          className="inline-flex min-h-14 items-center gap-2 text-sm"
+        >
+          <ArrowLeft size={18} />{" "}
+          {fromAdmin ? "관리자 현황으로 돌아가기" : "객실 안내로 돌아가기"}
+        </Link>
+        <RoomImageGallery roomId={room.roomId} roomName={room.name} />
+        <section className="space-y-5 py-8">
+          <h1 className="text-3xl font-bold">{room.name}</h1>
+          <p className="whitespace-pre-line leading-7 text-gray-600">
+            {room.description ||
+              "편안한 휴식을 위한 공간입니다. 이용할 날짜를 선택해 예약 가능 여부를 확인해 주세요."}
+          </p>
+          <p>
+            기준 {room.guestCount}명 · 최대 {room.maxGuests}명
+          </p>
+          <p className="text-xl font-semibold">
+            기본 {room.price.toLocaleString()}원 /{" "}
+            {room.type === "ROOM" ? "1박" : "1일"}
+          </p>
+          <p className="text-sm text-gray-500">
+            날짜에 따라 실제 이용 요금이 달라질 수 있습니다.
+          </p>
+          <Link
+            to={bookingHome}
+            className="inline-flex min-h-12 items-center rounded-xl bg-black px-6 py-3 text-white"
+          >
+            날짜 선택하고 예약하기
+          </Link>
+        </section>
+      </main>
     );
   }
 
@@ -283,7 +322,7 @@ export default function RoomDetailPage() {
             to={bookingHome}
             className="mt-3 block py-3 text-center text-sm text-gray-500"
           >
-            홈으로 돌아가기
+            예약 화면으로 돌아가기
           </Link>
         </div>
       </main>

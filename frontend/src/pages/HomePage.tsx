@@ -44,6 +44,12 @@ export default function HomePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center px-4 py-2 text-sm"
+          >
+            펜션 홈
+          </Link>
           {/* 관리자에서 들어온 경우에만 표시 */}
           {fromAdmin && (
             <Link

@@ -14,6 +14,7 @@ import AdminRoomsPage from "@/pages/admin/AdminRoomsPage";
 import AdminSettlementsPage from "@/pages/admin/AdminSettlementsPage";
 
 import HomePage from "@/pages/HomePage";
+import PensionHomePage from "@/pages/PensionHomePage";
 import ReservationLookupPage from "@/pages/ReservationLookupPage";
 import RoomDetailPage from "@/pages/RoomDetailPage";
 
@@ -25,7 +26,8 @@ export default function App() {
 
       <Routes>
         {/* 사용자 */}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<PensionHomePage />} />
+        <Route path="/reservation" element={<HomePage />} />
 
         <Route path="/rooms/:roomId" element={<RoomDetailPage />} />
 
